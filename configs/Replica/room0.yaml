@@ -8,8 +8,6 @@ data: #/data0/dataset/Replica/room0
   output: output/Replica/room0
   exp_name: 0911_eslammesh
 enable_loop_detect: False
-tracking:
-  pretrained: /data0/wjy/sgl/GO-SLAM/pretrained/droid.pth
 
 grid:
   oneGrid: False

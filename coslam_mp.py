@@ -116,7 +116,7 @@ class CoSLAM():
         self.load_pretrained(config['tracking']['pretrained'])
         self.net.to(self.device).eval()
         self.net.share_memory()
-        self.mesher = Mesher(config, self)
+        # self.mesher = Mesher(config, self)
         # store images, depth, poses, intrinsics (shared between process)
         self.video = DepthVideo(config)
         self.tracker = Tracker(config, self)

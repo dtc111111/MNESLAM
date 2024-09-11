@@ -7,18 +7,18 @@ mapping:
 #  marching_cubes_bound: [[-1,12.],[-1.,2.1],[-60.,1.7]]
 
 #for ori trans part
-#  bound: [ [ -3.,15. ],[ -5.,4. ],[ -5.,61. ] ]
-#  marching_cubes_bound: [[-3.,15.],[-5.,4.],[-5.,61.]]
-#start_index: 0
-#end_index: 4613
-
-  bound: [ [ -2.,4. ],[ -5.,4. ],[ -5.,53. ] ]
-  marching_cubes_bound: [ [ -2.,4. ],[ -5.,4. ],[ -5.,53. ] ]
+  bound: [ [ -3.,15. ],[ -5.,4. ],[ -5.,61. ] ]
+  marching_cubes_bound: [[-3.,15.],[-5.,4.],[-5.,61.]]
 start_index: 0
-end_index: 1700
-loop_kf1_id: 1300
-loop_kf2_id: 1300
-enable_loop_detect: True
+end_index: 4613
+
+#  bound: [ [ -2.,4. ],[ -5.,4. ],[ -5.,53. ] ]
+#  marching_cubes_bound: [ [ -2.,4. ],[ -5.,4. ],[ -5.,53. ] ]
+#start_index: 0
+#end_index: 1700
+#loop_kf1_id: 1300
+#loop_kf2_id: 1300
+#enable_loop_detect: True
 
 #  bound: [ [ -0.5,13. ],[ -5. ,4. ],[ 30.,61. ] ]
 #  marching_cubes_bound: [ [ -0.5,13. ],[ -5. ,4. ],[ 30.,61. ] ]

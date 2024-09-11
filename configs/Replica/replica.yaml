@@ -132,18 +132,18 @@ training:
   rot_rep: 'axis_angle'
   rgb_missing: 0.05
 
-#mesh:
-#  resolution: 512
-#  render_color: False
-#  vis: 500
-#  voxel_eval: 0.05
-#  voxel_final: 0.02
-#  visualisation: False
-meshing:
-  level_set: 0
-  resolution: 0.02 #cm # Increase this number to speed up meshing algorithm
-  eval_rec: False
-  mesh_bound_scale: 1.02
+mesh:
+  resolution: 512
+  render_color: False
+  vis: 500
+  voxel_eval: 0.05
+  voxel_final: 0.02
+  visualisation: False
+#meshing:
+#  level_set: 0
+#  resolution: 0.02 #cm # Increase this number to speed up meshing algorithm
+#  eval_rec: False
+#  mesh_bound_scale: 1.02
 
 planes_res:
   coarse: 0.02
