@@ -1,0 +1,15 @@
+inherit_from: configs/Replica/replica.yaml
+mapping:
+  bound: [[-1.0,7.0],[-1.3,3.7],[-1.7,1.4]]
+  marching_cubes_bound: [[-1.0,7.0],[-1.3,3.7],[-1.7,1.4]]
+data: #/data0/dataset/Replica/room0
+  datadir: /data0/wjy/ESLAM/Datasets/Replica/room0
+  trainskip: 1
+  output: output/Replica/room0
+  exp_name: 0911_eslammesh
+enable_loop_detect: False
+tracking:
+  pretrained: /data0/wjy/sgl/GO-SLAM/pretrained/droid.pth
+
+grid:
+  oneGrid: False
