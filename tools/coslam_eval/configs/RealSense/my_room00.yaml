@@ -1,0 +1,21 @@
+inherit_from: configs/RealSense/realsense.yaml
+mapping:
+  bound: [[-3.0, 3.5],[-1.5, 4.7],[-2.1, 1.05]]
+  marching_cubes_bound: [[-3.0, 3.5],[-1.5, 4.7],[-2.1, 1.05]]
+
+cam:
+  H: 480
+  W: 640
+  fx: 605.6531982421875
+  fy: 605.0773315429688
+  cx: 316.9604797363281
+  cy: 234.08656311035156
+
+grid:
+  hash_size: 16 # 1.59
+
+data:
+  datadir: ./data/my_room/00
+  trainskip: 1
+  output: output/my_room/00
+  exp_name: demo
