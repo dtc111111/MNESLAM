@@ -1,10 +1,7 @@
-# Co-SLAM: Joint Coordinate and Sparse Parametric Encodings for Neural Real-Time SLAM
+# MCNSLAM: Joint Coordinate and Sparse Parametric Encodings for Neural Real-Time SLAM
 
 ### [Paper](https://arxiv.org/pdf/2304.14377.pdf) | [Project Page](https://hengyiwang.github.io/projects/CoSLAM) | [Video](https://hengyiwang.github.io/projects/Co-SLAM/videos/presentation.mp4)
 
-> Co-SLAM: Joint Coordinate and Sparse Parametric Encodings for Neural Real-Time SLAM <br />
-> [Hengyi Wang](https://hengyiwang.github.io/), [Jingwen Wang](https://jingwenwang95.github.io/), [Lourdes Agapito](http://www0.cs.ucl.ac.uk/staff/L.Agapito/)<br />
-> CVPR 2023
 
 <p align="center">
   <a href="">
