@@ -1,0 +1,151 @@
+dataset: 'scannet'
+
+data:
+  downsample: 1
+  sc_factor: 1
+  translation: 0
+  num_workers: 4
+
+mapping:
+  sample: 2048
+  first_mesh: True
+  iters: 10
+  lr_embed: 0.005
+  lr_embed_color: 0.005 #?addornot
+
+  lr_decoder: 0.01
+  lr_rot: 0.001
+  lr_trans: 0.001
+  keyframe_every: 5
+  map_every: 5
+  n_pixels: 0.05
+  first_iters: 500
+  optim_cur: False
+  min_pixels_cur: 20 #100
+  map_accum_step: 1
+  pose_accum_step: 5
+  map_wait_step: 0
+  filter_depth: False
+
+  w_sdf_fs: 5
+  w_sdf_center: 200
+  w_sdf_tail: 10
+
+
+tracking:
+  ignore_edge_W: 20
+  ignore_edge_H: 20
+  device: "cuda:0"
+
+  pretrained: /data0/wjy/sgl/GO-SLAM/pretrained/droid.pth
+  buffer: 512
+  beta: 0.75  # beta * Distance(R|t) + (1-beta) * Distance(I|t), refer to droid_kernels.cu:frame_distance_kernel
+  warmup: 8
+  upsample: True
+  motion_filter:
+    thresh: 4.0  # add as keyframe if avg flow >= 4.0 pixels##########################33
+  frontend:
+    enable_loop: True
+    keyframe_thresh: 4.0  # remove keyframe if avg flow < 4.0 pixels##############################3
+    thresh: 16.0  # only consider edge with avg flow < 16.0 pixels
+    window: 25  # local ba window size
+    radius: 1
+    nms: 1
+    max_factors: 75  # num of edges within local ba
+  backend:
+    thresh: 25.0  # only consider edge with avg flow < 25.0 pixels
+    radius: 1
+    nms: 5
+    # used for loop detection
+    loop_window: 25  # 50
+    loop_thresh: 25.0  # only consider edge with avg flow < 50.0 pixels
+    loop_radius: 1
+    loop_nms: 12
+
+
+grid:
+  enc: 'HashGrid'
+  tcnn_encoding: True
+  hash_size: 19
+  voxel_color: 0.08
+  voxel_sdf: 0.04
+  oneGrid: True
+
+pos:
+  enc: 'OneBlob'
+  n_bins: 16
+
+decoder:
+  geo_feat_dim: 15
+  hidden_dim: 32
+  num_layers: 2
+  num_layers_color: 2
+  hidden_dim_color: 32
+  tcnn_network: False
+
+cam:
+  H: 480
+  W: 640
+  fx: 577.590698
+  fy: 578.729797
+  cx: 318.905426
+  cy: 242.683609
+  png_depth_scale: 1000. 
+  crop_edge: 10
+  near: 0
+  far: 8
+  depth_trunc: 100.
+
+  H_edge: 8
+  W_edge: 16
+  H_out: 240
+  W_out: 320
+
+training:
+  rgb_weight: 5.0
+  depth_weight: 0.1
+  sdf_weight: 1000
+  fs_weight: 10
+  eikonal_weight: 0
+  smooth_weight: 0.001 #0.001
+  smooth_pts: 64
+  smooth_vox: 0.1
+  smooth_margin: 0.05
+  #n_samples: 256
+  n_samples_d: 96
+  range_d: 0.25
+  n_range_d: 21
+  n_importance: 0
+  perturb: 1
+  white_bkgd: False
+  trunc: 0.1
+  rot_rep: 'quat'
+  rgb_missing: 0.0
+
+mesh:
+  resolution: 512
+  render_color: False
+  vis: 50 #500
+  voxel_eval: 0.05
+  voxel_final: 0.03
+  visualisation: False
+
+
+planes_res:
+  coarse: 0.02
+  fine: 0.01
+  bound_dividable: 0.02
+
+c_planes_res:
+  coarse: 0.08
+  fine: 0.02
+
+#0.02 0.01 0.08 0.02
+model:
+  c_dim: 32
+  truncation: 0.1
+  #input_ch: 128 #64
+  input_ch: 64
+  input_ch_pos: 48
+
+scale: 1

@@ -1,0 +1,102 @@
+inherit_from: configs/Indoor/indoor.yaml
+mapping:
+#  bound: [[-6.2,56.4],[-15.8,0],[-1.0, 4.5]]
+#  marching_cubes_bound:  [[-6.2,56.4],[-15.8,0],[-1.0, 4.5]]
+
+  bound: [ [ -6.2, 50. ],[ -6.5, -2.2 ],[ -1.0, 4.5 ] ]
+  marching_cubes_bound: [ [ -6.2, 50. ],[ -6.5, -2.2 ],[ -1.0, 4.5 ] ]
+start_index: 500
+end_index: 1600
+
+is_co_sdf: False
+enable_loop_detect: False
+
+
+data: #/data0/wjy/sgl/DATASET/Indoor/indoor_sq1
+  datadir: /data0/wjy/sgl/DATASET/ntu_indoor
+  trainskip: 1
+  output: output/Indoor/indoor_sq1
+  exp_name: 1013_newrgbd_part1
+
+mesh:
+  voxel_final: 0.03
+
+c_planes_res:
+  coarse: 0.08
+  fine: 0.02
+
+planes_res:
+  coarse: 0.08
+  fine: 0.02
+  bound_dividable: 0.02
+
+model:
+  c_dim: 32
+  truncation: 0.1
+  #input_ch: 128 #64
+  input_ch: 64
+  input_ch_pos: 48
+
+scale: 1
+
+#grid:
+#  oneGrid: False
+
+
+
+#  bound: [ [ -2.,4. ],[ -5.,4. ],[ -5.,53. ] ]
+#  marching_cubes_bound: [ [ -2.,4. ],[ -5.,4. ],[ -5.,53. ] ]
+#start_index: 0
+#end_index: 1700
+##loop_kf1_id: 1300
+##loop_kf2_id: 1300
+#enable_loop_detect: False
+
+#  bound: [ [ -2. ,13. ],[ -5. ,4. ],[ 30.,61. ] ]
+#  marching_cubes_bound: [ [ -2. ,13. ],[ -5. ,4. ],[ 30.,61. ] ]
+##start_index: 1300
+##end_index: 3000
+#start_index: 1300
+#end_index: 3000
+##loop_kf1_id: 2631
+##loop_kf2_id: 2630
+#enable_loop_detect: False
+
+#  bound: [ [ 6.,15. ],[ -5.,4. ],[ -5.,61. ] ]
+#  marching_cubes_bound: [[6.,15.],[-5.,4.],[-5.,61.]]
+#start_index: 2600
+#end_index: 3900
+##loop_kf1_id: 3323
+##loop_kf2_id: 3323
+#enable_loop_detect: False
+
+#  bound: [ [ -3.,15. ],[ -5.,4. ],[ -5.,40. ] ]
+#  marching_cubes_bound: [[-3.,15.],[-5.,4.],[-5.,40.]]
+#start_index: 3300
+#end_index: 4613
+#enable_loop_detect: False
+
+#xyz 1.67 -0.40 -0.03
+#左右 下上 前后
+#左右 9.56 左0.4右9.16\ 上下2.55 下0.45上2.1\ 前1.71后 60
+#相机高0.45
+
+#  bound: [ [ -6.2, 50. ],[ -6.5, -2.2 ],[ -1.0, 4.5 ] ]
+#  marching_cubes_bound: [ [ -6.2, 50. ],[ -6.5, -2.2 ],[ -1.0, 4.5 ] ]
+#start_index: 0
+#end_index: 1700
+#
+#  bound: [[25., 56.4 ],[-13.5,-2.],[-2.0, 4.5]]
+#  marching_cubes_bound:  [[25., 56.4 ],[-13.5,-2.],[-2.0, 4.5]]
+#start_index: 1300
+#end_index: 3000
+
+#  bound: [[-6.2,56.4],[-15.8,-7.],[-1.0, 4.5]]
+#  marching_cubes_bound:  [[-6.2,56.4],[-15.8,-7.],[-1.0, 4.5]]
+#start_index: 2600
+#end_index: 3900
+
+#  bound: [[-6.2,30],[-15.8,0],[-1.0, 4.5]]
+#  marching_cubes_bound:  [[-6.2,30],[-15.8,0],[-1.0, 4.5]]
+#start_index: 3300
+#end_index: 4613

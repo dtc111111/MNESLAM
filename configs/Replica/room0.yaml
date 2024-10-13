@@ -1,0 +1,42 @@
+inherit_from: configs/Replica/replica.yaml
+mapping:
+  bound: [[-1.0,7.0],[-1.3,3.7],[-1.7,1.4]]
+  marching_cubes_bound: [[-1.0,7.0],[-1.3,3.7],[-1.7,1.4]]
+  loop_iters: 100
+
+data: #/data0/dataset/Replica/room0
+  datadir: /data0/wjy/ESLAM/Datasets/Replica/room0
+  trainskip: 1
+  output: output/Replica/room0
+  exp_name: 1012_part2_loop
+  exp_name_1: 1012_co
+
+enable_loop_detect: True
+start_index: 900
+end_index: 2000
+
+grid:
+  oneGrid: True
+
+loop_kf2_id: 14
+
+training:
+  n_samples: 256
+
+is_co_sdf: True
+#mesh:
+#  render_color: True
+
+meshing:
+  level_set: 0
+  resolution: 0.02 #cm # Increase this number to speed up meshing algorithm
+  eval_rec: False
+  mesh_bound_scale: 1.02
+
+#planes_res:
+#  coarse: 0.24
+#  fine: 0.06
+#  bound_dividable: 0.24
+#c_planes_res:
+#  coarse: 0.24
+#  fine: 0.03

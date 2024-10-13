@@ -1,0 +1,177 @@
+dataset: 'replica'
+
+stride: 1 #goslam
+
+data:
+  downsample: 1
+  sc_factor: 1
+  translation: 0
+  num_workers: 4
+
+mapping:
+  cur_frame_iters: 0
+  sample: 2048
+  first_mesh: True
+  iters: 50
+  lr_embed: 0.005
+  lr_embed_color: 0.005
+  lr_decoder: 0.01
+  lr_rot: 0.001
+  lr_trans: 0.001
+  keyframe_every: 5
+  map_every: 5
+  n_pixels: 0.05 #0.05
+  first_iters: 500 #200
+  optim_cur: True
+  min_pixels_cur: 100
+  map_accum_step: 1
+  pose_accum_step: 5
+  map_wait_step: 0
+  filter_depth: False
+
+  w_sdf_fs: 5
+  w_sdf_center: 200
+  w_sdf_tail: 30
+#####
+  vis: 10
+
+vis:
+  render_freq: 10
+  mesh_freq: 4000
+
+tracking:
+
+  ignore_edge_W: 20
+  ignore_edge_H: 20
+########for loop
+  lr_rot: 0.00001
+  lr_trans: 0.00001
+  iter: 50
+  sample: 4096
+  wait_iters: 100
+#############goslam
+  device: "cuda:0"
+  pretrained: /data0/wjy/sgl/GO-SLAM/pretrained/droid.pth
+
+  buffer: 250
+  beta: 0.75
+  warmup: 12
+  upsample: True
+
+  motion_filter:
+    thresh: 4  # add as keyframe if avg flow >= 4.0 pixels
+
+  frontend:
+    enable_loop: True
+    keyframe_thresh: 4 # remove keyframe if avg flow < 4.0 pixels
+    window: 25  # local ba window size
+    radius: 1
+    max_factors: 75  # num of edges within local ba
+    nms: 0
+    thresh: 25.0
+  backend:
+    thresh: 25.0  # only consider edge with avg flow < 25.0 pixels
+    radius: 1
+    nms: 5
+    # used for loop detection
+    loop_window: 25  # only consider edge with avg flow < 25.0 pixels
+    loop_thresh: 25.0  # only consider edge with avg flow < 50.0 pixels
+    loop_radius: 1
+    loop_nms: 12
+
+grid:
+  enc: 'HashGrid'
+  tcnn_encoding: True
+  hash_size: 16
+  voxel_color: 0.08
+  voxel_sdf: 0.02
+  oneGrid: True
+
+pos:
+  enc: 'OneBlob'
+  n_bins: 16
+
+decoder:
+  geo_feat_dim: 15
+  hidden_dim: 32
+  num_layers: 2
+  num_layers_color: 2
+  hidden_dim_color: 32
+  tcnn_network: False
+
+cam:
+  H: 680
+  W: 1200
+  fx: 600.0
+  fy: 600.0
+  cx: 599.5
+  cy: 339.5
+  png_depth_scale: 6553.5 #for depth image in png format
+  crop_edge: 0
+  near: 0
+  far: 5
+  depth_trunc: 100.
+
+##########goslam
+  H_edge: 0
+  W_edge: 0
+  H_out: 320
+  W_out: 640
+
+training:
+  rgb_weight: 5.0
+  depth_weight: 0.1
+  sdf_weight: 1200
+  fs_weight: 10
+  eikonal_weight: 0
+  smooth_weight: 0
+  smooth_pts: 32
+  smooth_vox: 0.1
+  smooth_margin: 0.05
+
+  #n_samples:256
+  n_samples_d: 32
+  range_d: 0.1
+  n_range_d: 11
+  n_importance: 0
+  perturb: 1
+  white_bkgd: False
+  trunc: 0.1
+  rot_rep: 'axis_angle'
+  rgb_missing: 0.05
+
+mesh:
+  resolution: 512
+  render_color: False
+  vis: 500
+  voxel_eval: 0.05
+  voxel_final: 0.02
+  visualisation: False
+#meshing:
+#  level_set: 0
+#  resolution: 0.02 #cm # Increase this number to speed up meshing algorithm
+#  eval_rec: False
+#  mesh_bound_scale: 1.02
+
+planes_res:
+  coarse: 0.02
+  fine: 0.01
+  bound_dividable: 0.02
+
+c_planes_res:
+  coarse: 0.08
+  fine: 0.02
+
+model:
+  c_dim: 32
+  truncation: 0.1
+  input_ch: 64
+  input_ch_pos: 48
+
+scale: 1
+
+
+
+
+
+

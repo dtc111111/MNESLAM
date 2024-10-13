@@ -1,0 +1,13 @@
+inherit_from: configs/Replica/replica.yaml
+mapping:
+  bound: [[-2.8,8.2],[-1.1,7.2],[-2,1.3]]
+  marching_cubes_bound: [[-2.8,8.2],[-1.1,7.2],[-2,1.3]]
+data: #/data0/dataset/Replica/room0
+  datadir: /data0/wjy/sgl/DATASET/Replica/Apart-1/apart_1_part2
+  trainskip: 1
+  output: output/Replica/Apart-1/apart_1_part2
+  exp_name: 0917
+enable_loop_detect: False
+
+grid:
+  oneGrid: False
