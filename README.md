@@ -156,31 +156,29 @@ Download the data as below and the data is saved into the `./Datasets/INS` folde
 
 ## Run
 
-You can run Co-SLAM using the code below:
+You can run MNESLAM using the code below:
 
 ```
-python coslam.py --config './configs/{Dataset}/{scene}.yaml 
+python mneslam.py --config './configs/{Dataset}/{scene}.yaml 
 ```
 
 
 
-You can run Co-SLAM with multi-processing using the code below:
+You can run MNESLAM with multi-processing using the code below:
 
 ```
-python coslam_mp.py --config './configs/{Dataset}/{scene}.yaml 
+python mneslam_mp.py --config './configs/{Dataset}/{scene}.yaml 
 ```
 
 
 
 ## Evaluation
 
-We employ a slightly different evaluation strategy to measure the quality of the reconstruction, you can find out the code [here](https://github.com/JingwenWang95/neural_slam_eval). Note if you want to follow the evaluation protocol of NICE-SLAM, please refer to our supplementary material for detailed parameters setting.
+We employ a slightly different evaluation strategy to measure the quality of the reconstruction, you can find out the code [here](https://github.com/JingwenWang95/neural_slam_eval).
 
 
 
 ## Acknowledgement
 
 We adapt codes from some awesome repositories, including [NICE-SLAM](https://github.com/cvg/nice-slam), [NeuralRGBD](https://github.com/dazinovic/neural-rgbd-surface-reconstruction), [tiny-cuda-nn](https://github.com/NVlabs/tiny-cuda-nn), [NICE-SLAM](https://github.com/cvg/nice-slam), [iMAP](https://edgarsucar.github.io/iMAP/), [ESLAM](https://github.com/idiap/ESLAM) ,[CoSLAM](https://github.com/HengyiWang/Co-SLAM) Thanks for making the code available.
-
-The research presented here has been supported by a sponsored research award from Cisco Research and the UCL Centre for Doctoral Training in Foundational AI under UKRI grant number EP/S021566/1. This project made use of time on Tier 2 HPC facility JADE2, funded by EPSRC (EP/T022205/1).
 
