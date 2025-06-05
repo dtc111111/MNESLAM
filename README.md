@@ -1,3 +1,9 @@
+<p align="center">
+  <a href="">
+    <img src="Fig/teaser.png" alt="Logo" width="100%">
+  </a>
+</p>
+
 <h1 align="center">
 MNE-SLAM: Multi-Agent Neural SLAM for Mobile Robots
   
@@ -8,11 +14,7 @@ MNE-SLAM: Multi-Agent Neural SLAM for Mobile Robots
 </h1>
 <br>
 
-<p align="center">
-  <a href="">
-    <img src="Fig/teaser.png" alt="Logo" width="100%">
-  </a>
-</p>
+
 
 <p align="center">
   <a href="">
