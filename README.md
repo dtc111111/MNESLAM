@@ -1,7 +1,10 @@
 <h1 align="center">
 MNE-SLAM: Multi-Agent Neural SLAM for Mobile Robots
+  
 [CVPR 2024]
-[Project Page](https://ins-dataset.github.io/ins/) | [Paper](https://openaccess.thecvf.com//content/CVPR2025/papers/Deng_MNE-SLAM_MultiAgent_Neural_SLAM_for_Mobile_Robots_CVPR_2025_paper.pdf)
+  
+[Project Page](https://ins-dataset.github.io/ins/) | [Paper](https://openaccess.thecvf.com//content/CVPR2025/papers/Deng_MNE-SLAM_Multi-Agent_Neural_SLAM_for_Mobile_Robots_CVPR_2025_paper.pdf)
+
 </h1>
 <br>
 
