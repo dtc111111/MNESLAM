@@ -1,9 +1,9 @@
 <h1 align="center">
 MNE-SLAM: Multi-Agent Neural SLAM for Mobile Robots
   
-[CVPR 2024]
+[CVPR 2025]
   
-[Project Page](https://ins-dataset.github.io/ins/) | [Paper](https://openaccess.thecvf.com//content/CVPR2025/papers/Deng_MNE-SLAM_Multi-Agent_Neural_SLAM_for_Mobile_Robots_CVPR_2025_paper.pdf)
+[INS Dataset Page](https://ins-dataset.github.io/ins/) | [Paper](https://openaccess.thecvf.com//content/CVPR2025/papers/Deng_MNE-SLAM_Multi-Agent_Neural_SLAM_for_Mobile_Robots_CVPR_2025_paper.pdf)
 
 </h1>
 <br>
@@ -46,9 +46,9 @@ MNE-SLAM: Multi-Agent Neural SLAM for Mobile Robots
 # Notes
 
 - [x] We have updated the `README.md` and are preparing to open-source our code！  
-- [x] Code for main parts, including `optimizer`, `renderer`, `mapping modules`, `Voxelized Scene Representation`
+- [x] Code for main parts, including `optimizer`, `renderer`, `mapping modules`, `Joint Scene Representation`
 - [x] Installation setup
-- [ ] 2D-3D Tracking Module
+- [ ] Multi-agent Communication
 
 # Installation
 
@@ -58,7 +58,7 @@ The simplest way to do so, is to use [anaconda](https://www.anaconda.com/).
 Please follow the instructions below to install the repo and dependencies.
 
 ```bash
-git clone https://github.com/HengyiWang/Co-SLAM.git
+git clone https://github.com/dtc111111/MNESLAM.git
 cd MNE-SLAM
 ```
 ### Install the environment
@@ -83,14 +83,6 @@ cd external/NumpyMarchingCubes
 python setup.py install
 
 ```
-
-
-
-
-
-
-
-
 For tinycudann, if you cannot access network when you use GPUs, you can also try build from source as below:
 
 ```bash
@@ -104,4 +96,53 @@ python setup.py install
 ```
 
 
-If desired, the Open3D package can be installed in the [headless rendering](http://www.open3d.org/docs/latest/tutorial/Advanced/headless_rendering.html) mode. This is useful for running ESLAM on a server without a display. We recommend to install from [this commit](https://github.com/isl-org/Open3D/tree/v0.15.1) as we observed bugs in other releases of Open3D.
+If desired, the Open3D package can be installed in the [headless rendering](http://www.open3d.org/docs/latest/tutorial/Advanced/headless_rendering.html) mode. This is useful for running MNESLAM on a server without a display. We recommend to install from [this commit](https://github.com/isl-org/Open3D/tree/v0.15.1) as we observed bugs in other releases of Open3D.
+
+## Run
+
+### Replica
+Download the data as below and the data is saved into the `./Datasets/Replica` folder.
+```bash
+bash scripts/download_replica.sh
+```
+
+### ScanNet
+Please follow the data downloading procedure on [ScanNet](http://www.scan-net.org/) website, and extract color/depth frames from the `.sens` file using this [code](https://github.com/ScanNet/ScanNet/blob/master/SensReader/python/reader.py).
+
+<details>
+  <summary>[Directory structure of ScanNet (click to expand)]</summary>
+  
+  DATAROOT is `./Datasets` by default. If a sequence (`sceneXXXX_XX`) is stored in other places, please change the `input_folder` path in the config file or in the command line.
+
+```
+  DATAROOT
+  └── scannet
+      └── scans
+          └── scene0000_00
+              └── frames
+                  ├── color
+                  │   ├── 0.jpg
+                  │   ├── 1.jpg
+                  │   ├── ...
+                  │   └── ...
+                  ├── depth
+                  │   ├── 0.png
+                  │   ├── 1.png
+                  │   ├── ...
+                  │   └── ...
+                  ├── intrinsic
+                  └── pose
+                      ├── 0.txt
+                      ├── 1.txt
+                      ├── ...
+                      └── ...
+
+```
+</details>
+
+
+### TUM RGB-D
+Download the data as below and the data is saved into the `./Datasets/TUM` folder.
+```bash
+bash scripts/download_tum.sh
+```
