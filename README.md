@@ -69,10 +69,10 @@ Please follow the instructions below to install the repo and dependencies.
 git clone https://github.com/dtc111111/MNESLAM.git
 cd MNE-SLAM
 ```
-### Install the environment
+## Install the environment
 You can create an anaconda environment called `mneslam`. For linux, you need to install **libopenexr-dev** before creating the environment.
 Install all the dependencies via pip (Note here pytorch3d and tinycudann requires ~10min to build)
-# Install the pytorch first (Please check the cuda version)
+### Install the pytorch first (Please check the cuda version)
 ```bash
 pip install torch==1.10.1+cu113 torchvision==0.11.2+cu113 torchaudio==0.10.1 -f https://download.pytorch.org/whl/cu113/torch_stable.html
 ```
