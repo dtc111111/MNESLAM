@@ -63,9 +63,6 @@ class Mapper():
             # Forward
             ret = self.model.forward(rays_o.to(self.device), rays_d.to(self.device), target_s, target_d)
             loss = self.slam.get_loss_from_ret(ret, is_co_sdf=self.config['is_co_sdf'])
-
-            print('loss00000000', loss)
-
             loss.backward()
             self.map_optimizer.step()
         
@@ -141,9 +138,6 @@ class Mapper():
             time.sleep(0.1)
 
         else:
-            # self.video.map_counter.value map了的帧数
-            # self.video.counter.value track的keyframe的数量
-            # 但是这时候track仍在进行？
             while (self.video.counter.value <= self.config['tracking'][
                 'warmup'] or self.video.map_counter.value >= self.video.counter.value - 2) and (
                     self.slam.tracking_finished < 1):
@@ -156,31 +150,16 @@ class Mapper():
                 self.N = self.video.map_counter.value
                 keyframe_ids = self.video.timestamp[:self.N]
 
-                # print('counter', self.video.counter.value)
-                # print('map_counter', self.video.map_counter.value)
-                # print('keyframe_ids', keyframe_ids)
-                # print('timestamp', self.video.timestamp)
-
                 current_map_id = int(keyframe_ids[-1])
-                # print('map_id', current_map_id)
                 batch = self.dataset[current_map_id]
                 poses = self.video.get_pose(self.N, self.device)
                 cur_c2w = poses[-1]
-                # print('poses', poses.shape)
-                # print('cur_c2w', cur_c2w)
 
             for k, v in batch.items():
                 if isinstance(v, torch.Tensor):
                     batch[k] = v[None, ...]
                 else:
                     batch[k] = torch.tensor([v])
-    # looptime
-            # if current_map_id == 1300:
-            #     self.loop_for_mapalign(batch, )
-
-            # self.loop_for_mapalign(batch)
-
-            # current batch + all video poses(include current
             self.global_BA(batch, poses)
             self.mapping_idx[0] = current_map_id
 
@@ -193,9 +172,6 @@ class Mapper():
 
                     dict = torch.load(f'{save_path}/final_checkpoint1099.pt')
                     self.model_shared.load_state_dict(dict['model'])
-                    # print('Save pre loop mesh!')
-                    # self.slam.save_mesh(99999, voxel_size=self.config['mesh']['voxel_eval'])
-                    # self.slam.save_imgs(88888, batch['depth'][0], batch['rgb'][0], cur_c2w)
 
                     for i in range(self.config['mapping']['loop_iters']):
                         self.map_optimizer.zero_grad()
@@ -214,7 +190,7 @@ class Mapper():
                         bs = self.config['training']['n_samples']
                         indices = torch.randint(0, self.dataset.total_pixels, (bs,))
                         rays_d_cam = get_camera_rays(self.H, self.W, self.fx, self.fy, self.cx, self.cy).reshape(-1, 3)[
-                            indices].to(self.device)  # 生成形状为 [bs, 3] 的射线
+                            indices].to(self.device) 
 
                         #N pose Bs rays
                         N = 20
