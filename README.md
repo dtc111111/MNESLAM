@@ -85,10 +85,10 @@ conda activate mneslam
 
 
 
-# Build extension (marching cubes from neuralRGBD)
+### Build extension (marching cubes from neuralRGBD)
+```bash
 cd external/NumpyMarchingCubes
 python setup.py install
-
 ```
 For tinycudann, if you cannot access network when you use GPUs, you can also try build from source as below:
 
