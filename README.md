@@ -86,6 +86,10 @@ conda activate mneslam
 
 
 ### Build extension (marching cubes from neuralRGBD)
+
+```bash
+python setup.py install
+```
 ```bash
 cd external/NumpyMarchingCubes
 python setup.py install
