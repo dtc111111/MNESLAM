@@ -70,7 +70,7 @@ git clone https://github.com/dtc111111/MNESLAM.git
 cd MNE-SLAM
 ```
 ### Install the environment
-You can create an anaconda environment called `eslam`. For linux, you need to install **libopenexr-dev** before creating the environment.
+You can create an anaconda environment called `mneslam`. For linux, you need to install **libopenexr-dev** before creating the environment.
 ```bash
 sudo apt-get install libopenexr-dev
     
