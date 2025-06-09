@@ -94,7 +94,6 @@ class JointEncoding(nn.Module):
         for planes in [planes_xy, planes_xz, planes_yz]:
             for i, plane in enumerate(planes):
                 plane = plane.to(self.device)
-                # plane.share_memory_()
                 planes[i] = plane
 
         return (planes_xy, planes_xz, planes_yz)
@@ -223,7 +222,6 @@ class JointEncoding(nn.Module):
         else:
             planes_xy, planes_xz, planes_yz = self.all_planes
 
-        #embed = self.embed_fn(inputs_flat)
         p_nor = normalize_3d_coordinate(query_points.clone(), self.bound).float()
         inputs_flat = (query_points - self.bounding_box[:, 0]) / (self.bounding_box[:, 1] - self.bounding_box[:, 0])
         inputs_flat = torch.reshape(inputs_flat, [-1, inputs_flat.shape[-1]])
@@ -257,12 +255,12 @@ class JointEncoding(nn.Module):
         '''
 
         if loop == True:
+            # communication
             if not self.config['grid']['oneGrid']:
                 planes_xy, planes_xz, planes_yz, c_planes_xy, c_planes_xz, c_planes_yz =  load_planes()
             else:
                 planes_xy, planes_xz, planes_yz =  load_planes()
         else:
-
             if not self.config['grid']['oneGrid']:
                 planes_xy, planes_xz, planes_yz, c_planes_xy, c_planes_xz, c_planes_yz = self.all_planes
             else:
@@ -432,7 +430,6 @@ class JointEncoding(nn.Module):
             ray_batch_size = self.ray_batch_size
             gt_depth = gt_depth.reshape(-1).unsqueeze(1).to(device)
             for i in range(0, rays_d.shape[0], ray_batch_size):
-                # print(i)
                 rays_d_batch = rays_d[i:i+ray_batch_size]
                 rays_o_batch = rays_o[i:i+ray_batch_size]
                 if gt_depth is None:
@@ -542,13 +539,8 @@ class JointEncoding(nn.Module):
 
         if not self.training:
             return rend_dict
-        
-        # Get depth and rgb weights for loss
-        valid_depth_mask = (target_d.squeeze() > 0.) * (target_d.squeeze() < self.config['cam']['depth_trunc'])
-        # rgb_weight = valid_depth_mask.clone().unsqueeze(-1)
-        # rgb_weight[rgb_weight==0] = self.config['training']['rgb_missing']
 
-        # Get render loss
+        valid_depth_mask = (target_d.squeeze() > 0.) * (target_d.squeeze() < self.config['cam']['depth_trunc'])
         rgb_loss = compute_loss(rend_dict["rgb"], target_rgb)
         psnr = mse2psnr(rgb_loss)
         depth_loss = compute_loss(rend_dict["depth"].squeeze()[valid_depth_mask], target_d.squeeze()[valid_depth_mask])
@@ -565,11 +557,6 @@ class JointEncoding(nn.Module):
 
         depth_mask = (target_d.squeeze()>0)
         e_fs_loss, e_center_loss, e_tail_loss = self.sdf_losses(sdf[depth_mask], z_vals[depth_mask], target_d.squeeze()[depth_mask])
-        # valid_depth_count = valid_depth_mask.sum()
-        #
-        #
-        # depth_var_loss = (torch.abs(rend_dict["depth"].squeeze()-target_d.squeeze()) /
-        #         torch.sqrt(rend_dict["depth_var"].detach() + 1e-10))[valid_depth_mask].sum() /valid_depth_count
 
         ret = {
             "rgb": rend_dict["rgb"],
@@ -581,7 +568,7 @@ class JointEncoding(nn.Module):
             "e_fs_loss":e_fs_loss,
             "e_center_loss": e_center_loss,
             "e_tail_loss" : e_tail_loss,
-            # "depth_var_loss": depth_var_loss,
+
             "psnr": psnr,
         }
 
