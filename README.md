@@ -81,7 +81,7 @@ sudo apt-get install libopenexr-dev
 conda env create -f environment.yaml
 conda activate mneslam
 ```
-### Build extension (Droid-SLAM)
+### Build extension (DROID-SLAM)
 ```bash
 python setup.py install
 ```
