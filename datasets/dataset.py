@@ -18,21 +18,9 @@ def get_dataset(config):
     
     elif config['dataset'] == 'scannet':
         dataset = ScannetDataset
-    
-    elif config['dataset'] == 'synthetic':
-        dataset = RGBDataset
-    
+
     elif config['dataset'] == 'tum':
         dataset = TUMDataset
-    
-    elif config['dataset'] == 'azure':
-        dataset = AzureDataset
-    
-    elif config['dataset'] == 'iphone':
-        dataset = iPhoneDataset
-    
-    elif config['dataset'] == 'realsense':
-        dataset = RealsenseDataset
 
     elif config['dataset'] == 'indoor':
         dataset = Indoor
@@ -68,120 +56,6 @@ class BaseDataset(Dataset):
     
     def __getitem__(self, index):
         raise NotImplementedError()
-
-
-class iPhoneDataset(BaseDataset):
-    def __init__(self, cfg, basedir, trainskip=1, 
-                 downsample_factor=1, translation=0.0, 
-                 sc_factor=1., crop=0):
-        super(iPhoneDataset, self).__init__(cfg)
-
-        self.basedir = basedir
-        self.trainskip = trainskip
-        self.downsample_factor = downsample_factor
-        self.translation = translation
-        self.sc_factor = sc_factor
-        self.crop = crop
-
-        self.video_path = os.path.join(self.basedir, 'rgb.mp4')
-        if not os.path.exists(os.path.join(basedir, 'images')):
-            os.makedirs(os.path.join(basedir, 'images'))
-            self.process_video()
-        
-        self.img_files = [os.path.join(self.basedir, 'images', f) for f in sorted(os.listdir(os.path.join(self.basedir, 'images')), key=alphanum_key) if f.endswith('png')]
-        self.depth_paths = [os.path.join(self.basedir, 'depth', f) for f in sorted(os.listdir(os.path.join(basedir, 'depth')), key=alphanum_key) if f.endswith('png')]
-
-        self.poses = self.load_poses(basedir)
-        
-
-        self.rays_d = None
-        self.tracking_mask = None
-        self.frame_ids = range(0, len(self.img_files))
-        self.num_frames = len(self.frame_ids)
-    
-    def __len__(self):
-        return self.num_frames
-    
-    def __getitem__(self, index):
-        color_path = self.img_files[index]
-        depth_path = self.depth_paths[index]
-
-        color_data = cv2.imread(color_path)
-        if '.png' in depth_path:
-            depth_data = cv2.imread(depth_path, cv2.IMREAD_UNCHANGED)
-        elif '.exr' in depth_path:
-            raise NotImplementedError()
-        if self.distortion is not None:
-            raise NotImplementedError()
-
-        color_data = cv2.cvtColor(color_data, cv2.COLOR_BGR2RGB)
-        color_data = color_data / 255.
-        depth_data = depth_data.astype(np.float32) / self.png_depth_scale * self.sc_factor
-
-        H, W = depth_data.shape
-        color_data = cv2.resize(color_data, (W, H))
-
-        if self.downsample_factor > 1:
-            H = H // self.downsample_factor
-            W = W // self.downsample_factor
-            color_data = cv2.resize(color_data, (W, H), interpolation=cv2.INTER_AREA)
-            depth_data = cv2.resize(depth_data, (W, H), interpolation=cv2.INTER_NEAREST)
-
-        if self.rays_d is None:
-            self.rays_d = get_camera_rays(self.H, self.W, self.fx, self.fy, self.cx, self.cy)
-        
-        color_data = torch.from_numpy(color_data.astype(np.float32))
-        depth_data = torch.from_numpy(depth_data.astype(np.float32))
-
-        ret = {
-            "frame_id": self.frame_ids[index],
-            "c2w":  self.poses[index],
-            "rgb": color_data,
-            "depth": depth_data,
-            "direction": self.rays_d,
-        }
-
-        return ret
-    
-    def qTomatrix(self, pose):
-        '''
-        quaternion to matrix
-        '''
-        T_WC = np.eye(4)
-        T_WC[:3, :3] = Rotation.from_quat(pose[3:]).as_matrix()
-        T_WC[:3, 3] = pose[:3]
-
-        T_WC[:3, 1] *= -1
-        T_WC[:3, 2] *= -1
-        T_WC = torch.from_numpy(T_WC).float()
-
-        return T_WC
-
-    def load_poses(self, basedir):
-        '''
-        Load poses from odometry.csv
-        '''
-        path_to_pose = os.path.join(basedir, 'odometry.csv')
-        pose_data = np.loadtxt(path_to_pose, delimiter=',', skiprows=1)
-        poses = [self.qTomatrix(pose_data[i][2:]) for i in range(pose_data.shape[0])]
-
-        return poses
-    
-    def process_video(self):
-        '''
-        Extract frames from video
-        '''
-        print('processing video')
-        vidcap = cv2.VideoCapture(self.video_path)
-        frame_count = 0
-        num_frames = vidcap.get(cv2.CAP_PROP_FRAME_COUNT) - 1
-        print('num_frames:', num_frames)
-        while(frame_count < num_frames):
-            success,image = vidcap.read()
-            cv2.imwrite(os.path.join(self.basedir, 'images', "{:06d}.png".format(frame_count)), image)     # save frame as JPEG file      
-            frame_count += 1
-        
-        print('processing video... done!')
 
 
 class ReplicaDataset(BaseDataset):
@@ -374,122 +248,6 @@ class ScannetDataset(BaseDataset):
             self.poses.append(c2w)
 
 
-class AzureDataset(BaseDataset):
-    def __init__(self, cfg, basedir, trainskip=1, 
-                 downsample_factor=1, translation=0.0, 
-                 sc_factor=1., crop=0):
-        super(AzureDataset, self).__init__(cfg)
-
-        self.config = cfg
-        self.basedir = basedir
-        self.trainskip = trainskip
-        self.downsample_factor = downsample_factor
-        self.translation = translation
-        self.sc_factor = sc_factor
-        self.crop = crop
-        self.img_files = sorted(
-            glob.glob(os.path.join(self.basedir, 'color', '*.jpg')))
-        self.depth_paths = sorted(
-            glob.glob(os.path.join(self.basedir, 'depth', '*.png')))      
-
-        self.rays_d = None
-        self.frame_ids = range(0, len(self.img_files))
-        self.num_frames = len(self.frame_ids)
-        self.load_poses(os.path.join(self.basedir, 'pose'))  
-
-        if self.config['cam']['crop_edge'] > 0:
-            self.H -= self.config['cam']['crop_edge']*2
-            self.W -= self.config['cam']['crop_edge']*2
-            self.cx -= self.config['cam']['crop_edge']
-            self.cy -= self.config['cam']['crop_edge']
- 
-    def __len__(self):
-        return self.num_frames
- 
-    def __getitem__(self, index):
-        color_path = self.img_files[index]
-        depth_path = self.depth_paths[index]
-
-        color_data = cv2.imread(color_path)
-        if '.png' in depth_path:
-            depth_data = cv2.imread(depth_path, cv2.IMREAD_UNCHANGED)
-        elif '.exr' in depth_path:
-            raise NotImplementedError()
-        if self.distortion is not None:
-            raise NotImplementedError()
-
-        color_data = cv2.cvtColor(color_data, cv2.COLOR_BGR2RGB)
-        color_data = color_data / 255.
-        depth_data = depth_data.astype(np.float32) / self.png_depth_scale * self.sc_factor
-
-        H, W = depth_data.shape
-        color_data = cv2.resize(color_data, (W, H))
-
-        if self.downsample_factor > 1:
-            H = H // self.downsample_factor
-            W = W // self.downsample_factor
-            self.fx = self.fx // self.downsample_factor
-            self.fy = self.fy // self.downsample_factor
-            color_data = cv2.resize(color_data, (W, H), interpolation=cv2.INTER_AREA)
-            depth_data = cv2.resize(depth_data, (W, H), interpolation=cv2.INTER_NEAREST)
-
-        edge = self.config['cam']['crop_edge']
-        if edge > 0:
-            # crop image edge, there are invalid value on the edge of the color image
-            color_data = color_data[edge:-edge, edge:-edge]
-            depth_data = depth_data[edge:-edge, edge:-edge]
-
-        if self.rays_d is None:
-            self.rays_d = get_camera_rays(self.H, self.W, self.fx, self.fy, self.cx, self.cy)
-
-        color_data = torch.from_numpy(color_data.astype(np.float32))
-        depth_data = torch.from_numpy(depth_data.astype(np.float32))
-
-        ret = {
-            "frame_id": self.frame_ids[index],
-            "c2w":  self.poses[index],
-            "rgb": color_data,
-            "depth": depth_data,
-            "direction": self.rays_d
-        }
-
-        return ret
-
-    def load_poses(self, path):
-        principal_inertia_transform = np.array([[-0.14031718, -0.875229  , -0.46290958,  0.75258389],
-                                                    [ 0.217254  , -0.48335774,  0.84803655,  0.32966271],
-                                                    [-0.96597712,  0.01842514,  0.2579704 ,  3.28585226],
-                                                    [ 0.        ,  0.        ,  0.        ,  1.        ]])
-        principal_inertia_transform[:3, 1] *= -1
-        principal_inertia_transform[:3, 2] *= -1
-        self.poses = []
-        if os.path.exists(path):
-            with open(path) as f:
-                content = f.readlines()
-
-                # Load .log file.
-                for i in range(0, len(content), 5):
-                    # format %d (src) %d (tgt) %f (fitness)
-                    data = list(map(float, content[i].strip().split(' ')))
-                    ids = (int(data[0]), int(data[1]))
-                    fitness = data[2]
-
-                    # format %f x 16
-                    c2w = np.array(
-                        list(map(float, (''.join(
-                            content[i + 1:i + 5])).strip().split()))).reshape((4, 4))
-
-                    c2w[:3, 1] *= -1
-                    c2w[:3, 2] *= -1
-                    c2w = torch.from_numpy(c2w).float()
-                    self.poses.append(c2w)
-        else:
-            for i in range(self.num_frames):
-                c2w = principal_inertia_transform
-                c2w = torch.from_numpy(c2w).float() + 1e-5
-                self.poses.append(c2w)
-
-
 class Indoor(BaseDataset):
     def __init__(self, cfg, basedir, trainskip=1,
                  downsample_factor=1, translation=0.0,
@@ -538,11 +296,8 @@ class Indoor(BaseDataset):
             color_data = cv2.undistort(color_data, K, self.distortion)
         color_data = cv2.cvtColor(color_data, cv2.COLOR_BGR2RGB)
         color_data = color_data / 255.
-        # depth_data = depth_data / self.png_depth_scale
         H, W = depth_data.shape
         color_data = cv2.resize(color_data, (W, H))
-
-        # depth_data[depth_data > 6] = 0
 
         edge = self.config['cam']['crop_edge']
         if edge > 0:
@@ -571,11 +326,6 @@ class Indoor(BaseDataset):
         with open(path, "r") as f:
             lines = f.readlines()[self.t0:self.t1]
 
-        # trans = np.array([[-0.231550753117, - 0.972703993320, 0.015204750933, 3.524853229523],
-        #                   [0.044645648450, - 0.026238689199, - 0.998658597469, - 0.090221792459],
-        #                   [0.971798300743, - 0.230560690165, 0.049501836300, 3.537426233292],
-        #                   [0.000000000000, 0.000000000000, 0.000000000000, 1.000000000000]])
-
         trans = np.array([[0.970296, -0.241922, 0.000000, -0.789423],
                           [0.241922, 0.970296, 0.000000, -6.085402],
                           [0.000000, 0.000000, 1.000000, 0.000000],
@@ -588,117 +338,6 @@ class Indoor(BaseDataset):
             c2w_tensor[:3, 1] *= -1
             c2w_tensor[:3, 2] *= -1
             self.poses.append(c2w_tensor)
-
-class RGBDataset(BaseDataset):
-    def __init__(self, cfg, basedir, trainskip=1, 
-                 downsample_factor=1, translation=0.0, 
-                 sc_factor=1., crop=0):
-        super(RGBDataset, self).__init__(cfg)
-
-        self.basedir = basedir
-        self.trainskip = trainskip
-        self.downsample_factor = downsample_factor
-        self.translation = translation
-        self.sc_factor = sc_factor
-        self.crop = crop
-        self.img_files = [os.path.join(self.basedir, 'images', f) for f in sorted(os.listdir(os.path.join(self.basedir, 'images')), key=alphanum_key) if f.endswith('png')]
-        self.depth_paths = [os.path.join(self.basedir, 'depth_filtered', f) for f in sorted(os.listdir(os.path.join(self.basedir, 'depth_filtered')), key=alphanum_key) if f.endswith('png')]
-        self.gt_depth_paths = [os.path.join(self.basedir, 'depth', f) for f in sorted(os.listdir(os.path.join(basedir, 'depth')), key=alphanum_key) if f.endswith('png')]
-
-
-        self.all_poses, valid_poses = self.load_poses(os.path.join(self.basedir, 'trainval_poses.txt'))
-        self.all_gt_poses, valid_gt_poses = self.load_poses(os.path.join(basedir, 'poses.txt'))
-
-        init_pose = np.array(self.all_poses[0]).astype(np.float32)
-        init_gt_pose = np.array(self.all_gt_poses[0]).astype(np.float32)
-        self.align_matrix = init_gt_pose @ np.linalg.inv(init_pose)
-
-        self.poses = []
-        for pose in self.all_gt_poses:
-            self.poses.append(torch.from_numpy(np.array(pose)).float())
-        
-
-        self.rays_d = None
-        self.frame_ids = self.get_frame_ids()
-        self.num_frames = len(self.frame_ids)
-    
-    def get_frame_ids(self):
-        frame_ids = []
-        num_frames = len(self.img_files)
-        train_frame_ids = list(range(0, num_frames, self.trainskip))
-
-        self.frame_ids = []
-        for id in train_frame_ids:
-            #if valid_poses[id]:
-            frame_ids.append(id)
-        
-        return frame_ids
-    
-    def __len__(self):
-        return self.num_frames
-
-    def __getitem__(self, index):
-        index = self.frame_ids[index]
-        color_path = self.img_files[index]
-        depth_path = self.depth_paths[index]
-
-
-        color_data = cv2.imread(color_path)
-        if '.png' in depth_path:
-            depth_data = cv2.imread(depth_path, cv2.IMREAD_UNCHANGED)
-        elif '.exr' in depth_path:
-            raise NotImplementedError()
-        if self.distortion is not None:
-            raise NotImplementedError()
-
-        color_data = cv2.cvtColor(color_data, cv2.COLOR_BGR2RGB)
-        color_data = color_data / 255.
-        depth_data = depth_data.astype(np.float32) / self.png_depth_scale * self.sc_factor
-
-        H, W = depth_data.shape
-        color_data = cv2.resize(color_data, (W, H))
-
-        if self.downsample_factor > 1:
-            H = H // self.downsample_factor
-            W = W // self.downsample_factor
-            self.fx = self.fx // self.downsample_factor
-            self.fy = self.fy // self.downsample_factor
-            color_data = cv2.resize(color_data, (W, H), interpolation=cv2.INTER_AREA)
-            depth_data = cv2.resize(depth_data, (W, H), interpolation=cv2.INTER_NEAREST)
-
-        if self.rays_d is None:
-            self.rays_d = get_camera_rays(H, W, self.fx, self.fy, self.cx, self.cy)
-
-        color_data = torch.from_numpy(color_data.astype(np.float32))
-        depth_data = torch.from_numpy(depth_data.astype(np.float32))
-
-        ret = {
-            "frame_id": index,
-            "c2w":  self.poses[index],
-            "rgb": color_data,
-            "depth": depth_data,
-            "direction": self.rays_d
-        }
-
-        return ret
-
-    def load_poses(self, path):
-        file = open(path, "r")
-        lines = file.readlines()
-        file.close()
-        poses = []
-        valid = []
-        lines_per_matrix = 4
-        for i in range(0, len(lines), lines_per_matrix):
-            if 'nan' in lines[i]:
-                valid.append(False)
-                poses.append(np.eye(4, 4, dtype=np.float32).tolist())
-            else:
-                valid.append(True)
-                pose_floats = [[float(x) for x in line.split()] for line in lines[i:i+lines_per_matrix]]
-                poses.append(pose_floats)
-
-        return poses, valid
 
 
 class TUMDataset(BaseDataset):
@@ -857,7 +496,6 @@ class TUMDataset(BaseDataset):
         if self.rays_d is None:
             self.rays_d =get_camera_rays(self.H, self.W, self.fx, self.fy, self.cx, self.cy)
 
-
         color_data = torch.from_numpy(color_data.astype(np.float32))
         depth_data = torch.from_numpy(depth_data.astype(np.float32))
 
@@ -875,8 +513,6 @@ class TUMDataset(BaseDataset):
             # crop image edge, there are invalid value on the edge of the color image
             color_data = color_data[edge:-edge, edge:-edge]
             depth_data = depth_data[edge:-edge, edge:-edge]
-        
-
 
         ret = {
             "frame_id": self.frame_ids[index],
@@ -887,114 +523,3 @@ class TUMDataset(BaseDataset):
         }
         return ret
 
-
-class RealsenseDataset(BaseDataset):
-    def __init__(self, cfg, basedir, align=True, trainskip=1,
-                 downsample_factor=1, translation=0.0,
-                 sc_factor=1., crop=0, load=True):
-        super(RealsenseDataset, self).__init__(cfg)
-
-        self.config = cfg
-        self.basedir = basedir
-        self.trainskip = trainskip
-        self.downsample_factor = downsample_factor
-        self.translation = translation
-        self.sc_factor = sc_factor
-        self.crop = crop
-        self.img_files = sorted(
-            glob.glob(os.path.join(self.basedir, 'color', '*.jpg')))
-        self.depth_paths = sorted(
-            glob.glob(os.path.join(self.basedir, 'depth', '*.png')))
-
-        self.rays_d = None
-        self.frame_ids = range(0, len(self.img_files))
-        self.num_frames = len(self.frame_ids)
-        self.load_poses()
-
-        if self.config['cam']['crop_edge'] > 0:
-            self.H -= self.config['cam']['crop_edge']*2
-            self.W -= self.config['cam']['crop_edge']*2
-            self.cx -= self.config['cam']['crop_edge']
-            self.cy -= self.config['cam']['crop_edge']
-
-    def __len__(self):
-        return self.num_frames
-
-    def __getitem__(self, index):
-        color_path = self.img_files[index]
-        depth_path = self.depth_paths[index]
-
-        color_data = cv2.imread(color_path)
-        if '.png' in depth_path:
-            depth_data = cv2.imread(depth_path, cv2.IMREAD_UNCHANGED)
-        elif '.exr' in depth_path:
-            raise NotImplementedError()
-        if self.distortion is not None:
-            raise NotImplementedError()
-
-        color_data = cv2.cvtColor(color_data, cv2.COLOR_BGR2RGB)
-        color_data = color_data / 255.
-        depth_data = depth_data.astype(np.float32) / self.png_depth_scale * self.sc_factor
-
-        H, W = depth_data.shape
-        color_data = cv2.resize(color_data, (W, H))
-
-        # TODO: this if statement was actually never used, and will break the program if used
-        if self.downsample_factor > 1:
-            H = H // self.downsample_factor
-            W = W // self.downsample_factor
-            self.fx = self.fx // self.downsample_factor
-            self.fy = self.fy // self.downsample_factor
-            color_data = cv2.resize(color_data, (W, H), interpolation=cv2.INTER_AREA)
-            depth_data = cv2.resize(depth_data, (W, H), interpolation=cv2.INTER_NEAREST)
-
-        edge = self.config['cam']['crop_edge']
-        if edge > 0:
-            # crop image edge, there are invalid value on the edge of the color image
-            color_data = color_data[edge:-edge, edge:-edge]
-            depth_data = depth_data[edge:-edge, edge:-edge]
-
-        if self.rays_d is None:
-            self.rays_d = get_camera_rays(self.H, self.W, self.fx, self.fy, self.cx, self.cy)
-
-        color_data = torch.from_numpy(color_data.astype(np.float32))
-        depth_data = torch.from_numpy(depth_data.astype(np.float32))
-
-        ret = {
-            "frame_id": self.frame_ids[index],
-            "c2w":  self.poses[index],
-            "rgb": color_data,
-            "depth": depth_data,
-            "direction": self.rays_d
-        }
-
-        return ret
-
-    def load_poses(self):
-        self.align_mat = np.loadtxt(os.path.join(self.basedir, "align_mat.txt"))
-        self.poses = []
-        path = os.path.join(self.basedir, "scene/trajectory.log")
-        if os.path.exists(path):
-            with open(path) as f:
-                content = f.readlines()
-                # Load .log file.
-                for i in range(0, len(content), 5):
-                    # format %d (src) %d (tgt) %f (fitness)
-                    data = list(map(float, content[i].strip().split(' ')))
-                    ids = (int(data[0]), int(data[1]))
-                    fitness = data[2]
-
-                    # format %f x 16
-                    c2w = np.array(list(map(float, (''.join(content[i + 1:i + 5])).strip().split()))).reshape((4, 4))
-                    # align
-                    c2w = self.align_mat @ c2w
-                    # To OpenGL
-                    c2w[:3, 1] *= -1
-                    c2w[:3, 2] *= -1
-                    c2w = torch.from_numpy(c2w).float()
-                    self.poses.append(c2w)
-        else:
-            for i in range(self.num_frames):
-                c2w = self.align_mat
-                c2w = torch.from_numpy(c2w).float()
-                self.poses.append(c2w)
