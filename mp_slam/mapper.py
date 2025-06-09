@@ -136,7 +136,6 @@ class Mapper():
             indices = torch.randint(0, self.dataset.total_pixels, (bs,))
             rays_d_cam = get_camera_rays(self.H, self.W, self.fx, self.fy, self.cx, self.cy).reshape(-1, 3)[
                 indices].to(self.device)
-            # N pose Bs rays
             poses_all = torch.stack(
                 [torch.tensor(pose, dtype=torch.float32) for pose in poses_all]).to(
                 self.device)
@@ -147,28 +146,25 @@ class Mapper():
             rays_d = rays_d.reshape(-1, 3)
 
 
-            agent1_rendered_ret = self.model_shared.render_rays(rays_o, rays_d, target_d=None, loop=True)
-            agent1_rendered_rgb, agent1_rendered_depth = agent1_rendered_ret['rgb'], agent1_rendered_ret['depth']
+            agent_a_rendered_ret = self.model_shared.render_rays(rays_o, rays_d, target_d=None, loop=True)
+            agent_a_rendered_rgb, agent_a_rendered_depth = agent_a_rendered_ret['rgb'], agent_a_rendered_ret['depth']
 
-            agent1_rendered_depth = agent1_rendered_depth.unsqueeze(1)
+            agent_a_rendered_depth = agent_a_rendered_depth.unsqueeze(1)
 
-            ret = self.model.forward(rays_o, rays_d, agent1_rendered_rgb, agent1_rendered_depth)
+            ret = self.model.forward(rays_o, rays_d, agent_a_rendered_rgb, agent_a_rendered_depth)
             loss = self.slam.get_loss_from_ret(ret, is_co_sdf=self.config['is_co_sdf'])
 
             loss.backward()
             self.map_optimizer.step()
 
-        idx = int(self.mapping_idx[0].item())
-        print('Save loop mesh!', idx)
 
-    def get_loop_pose(self, cur_c2w, batch)
+    def get_loop_pose(self, cur_c2w, batch):
         best_sdf_loss = None
         thresh = 0
 
         iW = self.config['tracking']['ignore_edge_W']
         iH = self.config['tracking']['ignore_edge_H']
 
-        # 用loop b给loop a的pose初始化
         loop_a_rot, loop_a_trans, pose_optimizer = self.slam.get_pose_param_optim(cur_c2w[None, ...], mapping=False)
 
         # Start tracking
@@ -179,7 +175,6 @@ class Mapper():
             indice = self.slam.select_samples(self.dataset.H - iH * 2, self.dataset.W - iW * 2,
                                               self.config['tracking']['sample'])
 
-            # Slicing
             indice_h, indice_w = indice % (self.dataset.H - iH * 2), indice // (self.dataset.H - iH * 2)
             rays_d_cam = batch['direction'].squeeze(0)[iH:-iH, iW:-iW, :][indice_h, indice_w, :].to(
                 self.device)
@@ -187,22 +182,22 @@ class Mapper():
             rays_o = loop_a_c2w_est[..., :3, -1].repeat(self.config['tracking']['sample'], 1)
             rays_d = torch.sum(rays_d_cam[..., None, :] * loop_a_c2w_est[:, :3, :3], -1)
 
-            agent1_rendered_ret = self.model_shared.render_rays(rays_o, rays_d, target_d=None, loop=True)
-            agent1_rendered_rgb, agent1_rendered_depth = agent1_rendered_ret['rgb'], agent1_rendered_ret['depth']
-            agent1_rendered_depth = agent1_rendered_depth.unsqueeze(1)
+            agent_a_rendered_ret = self.model_shared.render_rays(rays_o, rays_d, target_d=None, loop=True)
+            agent_a_rendered_rgb, agent_target_rendered_depth = agent_a_rendered_ret['rgb'], agent_a_rendered_ret['depth']
+            agent_a_rendered_depth = agent_a_rendered_depth.unsqueeze(1)
 
-            ret = self.model.forward(rays_o, rays_d, agent1_rendered_rgb, agent1_rendered_depth)
-            # ret = {'rgb' : rgb_map, 'depth' :depth_map, 'disp_map' : disp_map, 'acc_map' : acc_map, 'depth_var':depth_var,}
+            ret = self.model.forward(rays_o, rays_d, agent_a_rendered_rgb, agent_a_rendered_depth)
+
             loss = self.slam.get_loss_from_ret(ret, sdf=False)
 
-            if best_sdf_loss is None:
-                best_sdf_loss = loss.cpu().item()
+            if best_loop_loss is None:
+                best_loop_loss = loss.cpu().item()
                 best_loop_a_c2w_est = loop_a_c2w_est.detach()
 
             with torch.no_grad():
                 loop_a_c2w_est = self.slam.matrix_from_tensor(loop_a_rot, loop_a_trans)
-                if loss.cpu().item() < best_sdf_loss:
-                    best_sdf_loss = loss.cpu().item()
+                if loss.cpu().item() < best_loop_loss:
+                    best_loop_loss = loss.cpu().item()
                     best_loop_a_c2w_est = loop_a_c2w_est.detach()
                     thresh = 0
                 else:
@@ -214,9 +209,8 @@ class Mapper():
             loss.backward()
             pose_optimizer.step()
 
-        # b 坐标系下 a 的位姿
         loop_a_pose = best_loop_a_c2w_est.detach().clone()[0]
-        # 从 b 坐标系到 a 坐标系的变换矩阵
+
         loop_b2a_pose = loop_a_pose @ cur_c2w.inverse()
 
     def run(self):

@@ -43,6 +43,7 @@ class JointEncoding(nn.Module):
                                mode='bilinear').squeeze().transpose(0, 1)
             xz = F.grid_sample(planes_xz[i], vgrid[..., [0, 2]], padding_mode='border', align_corners=True,
                                mode='bilinear').squeeze().transpose(0, 1)
+                               mode='bilinear').squeeze().transpose(0, 1)
             yz = F.grid_sample(planes_yz[i], vgrid[..., [1, 2]], padding_mode='border', align_corners=True,
                                mode='bilinear').squeeze().transpose(0, 1)
             feat.append(xy + xz + yz)
@@ -218,9 +219,6 @@ class JointEncoding(nn.Module):
             geo_feat: [N_rays, N_samples, channel]
         '''
 
-  
-        #embedded = self.embed_fn(inputs_flat)
-
         if not self.config['grid']['oneGrid']:
             planes_xy, planes_xz, planes_yz, c_planes_xy, c_planes_xz, c_planes_yz = self.all_planes
         else:
@@ -249,7 +247,7 @@ class JointEncoding(nn.Module):
     def query_color(self, query_points):
         return torch.sigmoid(self.query_color_sdf(query_points)[..., :3])
       
-    def query_color_sdf(self, query_points):
+    def query_color_sdf(self, query_points, loop=False):
         '''
         Query the color and sdf at query_points.
 
@@ -258,10 +256,19 @@ class JointEncoding(nn.Module):
         Returns:
             raw: [N_rays, N_samples, 4]
         '''
-        if not self.config['grid']['oneGrid']:
-            planes_xy, planes_xz, planes_yz, c_planes_xy, c_planes_xz, c_planes_yz = self.all_planes
+
+        if loop == True:
+            if not self.config['grid']['oneGrid']:
+                planes_xy, planes_xz, planes_yz, c_planes_xy, c_planes_xz, c_planes_yz =  load_planes()
+            else:
+                planes_xy, planes_xz, planes_yz =  load_planes()
         else:
-            planes_xy, planes_xz, planes_yz = self.all_planes
+
+            if not self.config['grid']['oneGrid']:
+                planes_xy, planes_xz, planes_yz, c_planes_xy, c_planes_xz, c_planes_yz = self.all_planes
+            else:
+                planes_xy, planes_xz, planes_yz = self.all_planes
+
 
         p_nor = normalize_3d_coordinate(query_points.clone(), self.bound).float()
 
@@ -425,8 +432,6 @@ class JointEncoding(nn.Module):
 
             ray_batch_size = self.ray_batch_size
             gt_depth = gt_depth.reshape(-1).unsqueeze(1).to(device)
-            # print(gt_depth.shape)
-
             for i in range(0, rays_d.shape[0], ray_batch_size):
                 # print(i)
                 rays_d_batch = rays_d[i:i+ray_batch_size]
@@ -480,8 +485,6 @@ class JointEncoding(nn.Module):
             (z_vals + sdf * self.config["model"]["truncation"])[center_mask] - gt_depth[:, None].expand(z_vals.shape)[center_mask]))
         tail_loss = torch.mean(torch.square(
             (z_vals + sdf * self.config["model"]["truncation"])[tail_mask] - gt_depth[:, None].expand(z_vals.shape)[tail_mask]))
-
-        # sdf_losses = self.config["mapping"]["w_sdf_fs"] * fs_loss + self.config["mapping"]["w_sdf_center"] * center_loss + self.config["mapping"]["w_sdf_tail"] * tail_loss
 
         return fs_loss, center_loss, tail_loss
 
@@ -584,4 +587,5 @@ class JointEncoding(nn.Module):
         }
 
         return ret
+
 
