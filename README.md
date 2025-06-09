@@ -81,15 +81,15 @@ sudo apt-get install libopenexr-dev
 conda env create -f environment.yaml
 conda activate mneslam
 ```
-
-
+### Build extension (Droid-SLAM)
+```bash
+python setup.py install
+```
 
 
 ### Build extension (marching cubes from neuralRGBD)
 
-```bash
-python setup.py install
-```
+
 ```bash
 cd external/NumpyMarchingCubes
 python setup.py install
