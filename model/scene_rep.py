@@ -1,11 +1,7 @@
-
 import os
-
 import numpy as np
 import torch
 import torch.nn as nn
-
-# Local imports
 from .encodings import get_encoder
 from .decoder import ColorSDFNet, ColorSDFNet_v2
 from .utils import sample_pdf, batchify, get_sdf_loss, mse2psnr, compute_loss, normalize_3d_coordinate, get_rays
