@@ -1,4 +1,4 @@
-# package imports
+
 import os
 
 import numpy as np
@@ -42,7 +42,6 @@ class JointEncoding(nn.Module):
             xy = F.grid_sample(planes_xy[i], vgrid[..., [0, 1]], padding_mode='border', align_corners=True,
                                mode='bilinear').squeeze().transpose(0, 1)
             xz = F.grid_sample(planes_xz[i], vgrid[..., [0, 2]], padding_mode='border', align_corners=True,
-                               mode='bilinear').squeeze().transpose(0, 1)
                                mode='bilinear').squeeze().transpose(0, 1)
             yz = F.grid_sample(planes_yz[i], vgrid[..., [1, 2]], padding_mode='border', align_corners=True,
                                mode='bilinear').squeeze().transpose(0, 1)

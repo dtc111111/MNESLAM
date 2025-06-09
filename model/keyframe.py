@@ -11,7 +11,7 @@ class KeyFrameDatabase(object):
         self.rays = torch.zeros((num_kf, num_rays_to_save, 7))
         self.num_rays_to_save = num_rays_to_save
         # manager = Manager()
-        # self.frame_ids = manager.list()  # 共享列表
+
         self.frame_ids = [0]
         self.all_frame_ids = torch.arange(0, num_kf, dtype=torch.int32)
 
@@ -42,21 +42,13 @@ class KeyFrameDatabase(object):
         rays = rays[:, idxs]
         return rays
 
-    # def attach_ids(self, frame_id):
-    #     '''
-    #     Attach the frame ids to list
-    #     '''
-    #     self.frame_ids = torch.cat([self.frame_ids, frame_id])
-    #     self.frame_ids.share_memory_()
 
     def del_keyframe(self, idx):
         '''
         Remove keyframe rays from the keyframe database
         '''
 
-        print('self.frame_ids', self.frame_ids,'idx', idx)
-
-        if len(self.frame_ids) >= idx+2:
+        if idx + 2 < len(self.frame_ids):
             self.rays = torch.cat((self.rays[:idx], self.rays[idx + 1:]))
             self.frame_ids = self.frame_ids[:idx+1]
 
@@ -65,7 +57,6 @@ class KeyFrameDatabase(object):
         '''
         Add keyframe rays to the keyframe database
         '''
-        # batch direction (Bs=1, H*W, 3)
         rays = torch.cat([batch['direction'], batch['rgb'], batch['depth'][..., None]], dim=-1)
         rays = rays.reshape(1, -1, rays.shape[-1])
         if filter_depth:
@@ -73,19 +64,12 @@ class KeyFrameDatabase(object):
         else:
             rays = self.sample_single_keyframe_rays(rays)
 
-        # if not isinstance(batch['frame_id'], torch.Tensor):
-        #     batch['frame_id'] = torch.tensor([batch['frame_id']])
-
-        # self.attach_ids(batch['frame_id'])
 
         if not isinstance(counter, torch.Tensor):
             counter = torch.tensor([counter])
 
-        # if counter > 1:
-        #     self.attach_ids(counter-1)
-        # print(self.frame_ids)
         self.frame_ids = self.all_frame_ids[:counter]
-        # print('self.frame_ids', self.frame_ids)
+
         self.rays[counter-1] = rays
 
 
@@ -96,12 +80,10 @@ class KeyFrameDatabase(object):
         '''
 
         num_kf = len(self.frame_ids)
-        # print('num_kf',num_kf)
         idxs = torch.tensor(random.sample(range(num_kf * self.num_rays_to_save), bs))
         sample_rays = self.rays[:num_kf].reshape(-1, 7)[idxs]
 
         frame_ids = self.frame_ids[idxs//self.num_rays_to_save]
-        # print('self.frame_ids', self.frame_ids)
         return sample_rays, frame_ids
 
 

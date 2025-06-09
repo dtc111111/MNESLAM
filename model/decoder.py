@@ -1,4 +1,4 @@
-# Package imports
+
 import torch
 import torch.nn as nn
 import tinycudann as tcnn
