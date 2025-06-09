@@ -61,7 +61,6 @@ class Tracker(nn.Module):
         '''
 
         with torch.no_grad():
-
             self.motion_filter.track(timestamp, image, depth, intrinsic, gt_pose=gt_pose)
             self.frontend()
 
