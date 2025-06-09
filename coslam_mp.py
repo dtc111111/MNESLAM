@@ -28,7 +28,6 @@ import torch.nn as nn
 from tracker.droid_net import DroidNet
 from collections import OrderedDict
 from tracker.depth_video import DepthVideo
-
 from tracker.trajectory_filler import PoseTrajectoryFiller
 from lietorch import SE3
 import numpy as np
