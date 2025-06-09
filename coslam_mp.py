@@ -17,7 +17,6 @@ from datasets.dataset_track import get_dataset_track
 from utils import coordinates, extract_mesh
 from tools.eval_ate import pose_evaluation
 from optimization.utils import at_to_transform_matrix, qt_to_transform_matrix, matrix_to_axis_angle, matrix_to_quaternion, cam_pose_to_matrix
-
 import torch.multiprocessing as mp
 mp.set_sharing_strategy('file_system')
 from mp_slam.tracker import Tracker
