@@ -17,7 +17,6 @@ class JointEncoding(nn.Module):
         super(JointEncoding, self).__init__()
         self.config = config
         self.bounding_box = bound_box
-        # self.get_resolution()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.load_bound(config)
         self.get_encoding(config)
@@ -25,7 +24,7 @@ class JointEncoding(nn.Module):
 
         self.ray_batch_size = ray_batch_size
 
-    def sample_plane_feature(self, p_nor, planes_xy, planes_xz, planes_yz):     #ESLAM
+    def sample_plane_feature(self, p_nor, planes_xy, planes_xz, planes_yz):
         """
         Sample feature from planes
         Args:
@@ -52,22 +51,6 @@ class JointEncoding(nn.Module):
 
         return feat
 
-    # def get_resolution(self):
-    #     '''
-    #     Get the resolution of the grid
-    #     '''
-    #     dim_max = (self.bounding_box[:,1] - self.bounding_box[:,0]).max()
-    #     if self.config['grid']['voxel_sdf'] > 10:
-    #         self.resolution_sdf = self.config['grid']['voxel_sdf']
-    #     else:
-    #         self.resolution_sdf = int(dim_max / self.config['grid']['voxel_sdf'])
-    #
-    #     if self.config['grid']['voxel_color'] > 10:
-    #         self.resolution_color = self.config['grid']['voxel_color']
-    #     else:
-    #         self.resolution_color = int(dim_max / self.config['grid']['voxel_color'])
-    #
-    #     print('SDF resolution:', self.resolution_sdf)
 
     def load_bound(self, cfg):
         """
@@ -156,16 +139,13 @@ class JointEncoding(nn.Module):
         self.embedpos_fn, self.input_ch_pos = get_encoder(config['pos']['enc'], n_bins=self.config['pos']['n_bins'])
 
         # Sparse parametric encoding (SDF)
-        #self.embed_fn, self.input_ch = get_encoder(config['grid']['enc'], log2_hashmap_size=config['grid']['hash_size'], desired_resolution=self.resolution_sdf)
         self.input_ch = config['model']['input_ch']
         self.input_ch_pos = config['model']['input_ch_pos']
         self.all_planes = self.init_all_planes(self.config)
 
         # Sparse parametric encoding (Color)
         if not self.config['grid']['oneGrid']:
-            #print('Color resolution:', self.resolution_color)
             self.all_planes = self.all_planes + self.init_all_c_planes(self.config)
-            #self.embed_fn_color, self.input_ch_color = get_encoder(config['grid']['enc'], log2_hashmap_size=config['grid']['hash_size'], desired_resolution=self.resolution_color)
 
     def get_decoder(self, config):
         '''
@@ -269,7 +249,7 @@ class JointEncoding(nn.Module):
     def query_color(self, query_points):
         return torch.sigmoid(self.query_color_sdf(query_points)[..., :3])
       
-    def query_color_sdf(self, query_points, loop=False):
+    def query_color_sdf(self, query_points):
         '''
         Query the color and sdf at query_points.
 
@@ -278,25 +258,10 @@ class JointEncoding(nn.Module):
         Returns:
             raw: [N_rays, N_samples, 4]
         '''
-        # if not self.config['grid']['oneGrid']:
-        #     planes_xy, planes_xz, planes_yz, c_planes_xy, c_planes_xz, c_planes_yz = self.all_planes
-        # else:
-        #     planes_xy, planes_xz, planes_yz = self.all_planes
-        if loop == True:
-            print('loooooooooop')
-            save_path = os.path.join(self.config['data']['output'], self.config['data']['exp_name_1'])
-            dict = torch.load(f'{save_path}/final_checkpoint1099.pt')
-
-            if not self.config['grid']['oneGrid']:
-                planes_xy, planes_xz, planes_yz, c_planes_xy, c_planes_xz, c_planes_yz = dict['all_planes']
-            else:
-                planes_xy, planes_xz, planes_yz = dict['all_planes']
+        if not self.config['grid']['oneGrid']:
+            planes_xy, planes_xz, planes_yz, c_planes_xy, c_planes_xz, c_planes_yz = self.all_planes
         else:
-
-            if not self.config['grid']['oneGrid']:
-                planes_xy, planes_xz, planes_yz, c_planes_xy, c_planes_xz, c_planes_yz = self.all_planes
-            else:
-                planes_xy, planes_xz, planes_yz = self.all_planes
+            planes_xy, planes_xz, planes_yz = self.all_planes
 
         p_nor = normalize_3d_coordinate(query_points.clone(), self.bound).float()
 
@@ -308,7 +273,7 @@ class JointEncoding(nn.Module):
 
         if not self.config['grid']['oneGrid']:
             embed_color = self.sample_plane_feature(p_nor, c_planes_xy, c_planes_xz, c_planes_yz)
-            #embed_color = self.embed_fn_color(inputs_flat)
+
             return self.decoder(embed, embe_pos, embed_color)
 
         return self.decoder(embed, embe_pos)

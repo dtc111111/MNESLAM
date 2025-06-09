@@ -61,11 +61,8 @@ class Tracker(nn.Module):
         '''
 
         with torch.no_grad():
-            ### check there is enough motion
-            # timestamp, image, depth, intrinsic, gt_pose = gt_pose
 
             self.motion_filter.track(timestamp, image, depth, intrinsic, gt_pose=gt_pose)
-            # local bundle adjustment
             self.frontend()
 
 
