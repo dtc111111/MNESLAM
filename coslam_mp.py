@@ -1,14 +1,9 @@
 import os
-
 import torch
 import torch.optim as optim
 import random
-import argparse
-import json
-
 from matplotlib import pyplot as plt
 from tqdm import tqdm
-
 import config
 from model.scene_rep import JointEncoding
 from model.keyframe import KeyFrameDatabase
@@ -21,9 +16,7 @@ import torch.multiprocessing as mp
 mp.set_sharing_strategy('file_system')
 from mp_slam.tracker import Tracker
 from mp_slam.mapper import Mapper
-
 import torch.nn as nn
-
 from tracker.droid_net import DroidNet
 from collections import OrderedDict
 from tracker.depth_video import DepthVideo
