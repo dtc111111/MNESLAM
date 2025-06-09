@@ -159,7 +159,7 @@ class Mapper():
 
 
     def get_loop_pose(self, cur_c2w, batch):
-        best_sdf_loss = None
+        best_loop_loss = None
         thresh = 0
 
         iW = self.config['tracking']['ignore_edge_W']
@@ -167,7 +167,6 @@ class Mapper():
 
         loop_a_rot, loop_a_trans, pose_optimizer = self.slam.get_pose_param_optim(cur_c2w[None, ...], mapping=False)
 
-        # Start tracking
         for i in range(self.config['tracking']['iter']):
             pose_optimizer.zero_grad()
             loop_a_c2w_est = self.slam.matrix_from_tensor(loop_a_rot, loop_a_trans)
@@ -215,115 +214,63 @@ class Mapper():
 
     def run(self):
 
-        # Start mapping
-        # while self.tracking_idx[0] < len(self.dataset)-1:
-        if self.video.map_counter.value == 0:
-            batch = self.dataset[0]
-            self.first_frame_mapping(batch, self.config['mapping']['first_iters'])
-            time.sleep(0.1)
+        with self.video.get_lock():
+            self.video.map_counter.value += 1
 
-        else:
-            while (self.video.counter.value <= self.config['tracking'][
-                'warmup'] or self.video.map_counter.value >= self.video.counter.value - 2) and (
-                    self.slam.tracking_finished < 1):
-                time.sleep(0.1)
+            self.N = self.video.map_counter.value
+            keyframe_ids = self.video.timestamp[:self.N]
 
-            with self.video.get_lock():
-                self.video.map_counter.value += 1
+            current_map_id = int(keyframe_ids[-1])
+            batch = self.dataset[current_map_id]
+            poses = self.video.get_pose(self.N, self.device)
+            cur_c2w = poses[-1]
 
-                self.N = self.video.map_counter.value
-                keyframe_ids = self.video.timestamp[:self.N]
+        for k, v in batch.items():
+            if isinstance(v, torch.Tensor):
+                batch[k] = v[None, ...]
+            else:
+                batch[k] = torch.tensor([v])
+        self.global_BA(batch, poses)
+        self.mapping_idx[0] = current_map_id
 
-                current_map_id = int(keyframe_ids[-1])
-                batch = self.dataset[current_map_id]
-                poses = self.video.get_pose(self.N, self.device)
-                cur_c2w = poses[-1]
+        self.video.keyframe.add_keyframe(batch, self.video.map_counter.value)
 
-            for k, v in batch.items():
-                if isinstance(v, torch.Tensor):
-                    batch[k] = v[None, ...]
-                else:
-                    batch[k] = torch.tensor([v])
-            self.global_BA(batch, poses)
-            self.mapping_idx[0] = current_map_id
+        idx = int(self.mapping_idx[0].item())
 
+        self.slam.save_imgs(idx, batch['depth'][0], batch['rgb'][0], cur_c2w)
+        self.keyframe_dict.append(
+            {'color': batch['rgb'][0].cpu(), 'depth': batch['depth'][0].cpu(),
+             'est_c2w': cur_c2w.clone().cpu()})
 
-            self.video.keyframe.add_keyframe(batch, self.video.map_counter.value)
+        pose_save_path = os.path.join(self.config['data']['output'], self.config['data']['exp_name'])
+        np.save(
+            f'{pose_save_path}/key_est_poses.npy',
+            poses.cpu().numpy(),
+        )
 
-            idx = int(self.mapping_idx[0].item())
+        if self.video.map_counter.value % 50 == 0 and self.video.map_counter.value > 0:
+            if self.config['is_co_sdf']:
+                self.slam.save_mesh(idx, voxel_size=self.config['mesh']['voxel_eval'])
+            else:
+                mesh_save_path = os.path.join(self.config['data']['output'], self.config['data']['exp_name'])
+                mesh_directory = os.path.join(mesh_save_path, 'mesh')
 
-            self.slam.save_imgs(idx, batch['depth'][0], batch['rgb'][0], cur_c2w)
-            self.keyframe_dict.append(
-                {'color': batch['rgb'][0].cpu(), 'depth': batch['depth'][0].cpu(),
-                 'est_c2w': cur_c2w.clone().cpu()})
+                if not os.path.exists(mesh_directory):
+                    os.makedirs(mesh_directory)
 
-            pose_save_path = os.path.join(self.config['data']['output'], self.config['data']['exp_name'])
-            np.save(
-                f'{pose_save_path}/key_est_poses.npy',
-                poses.cpu().numpy(),  # c2ws
-            )
+                mesh_out_file = os.path.join(mesh_directory, f'{idx:05d}_mesh.ply')
 
-            if self.video.map_counter.value % 50 == 0 and self.video.map_counter.value > 0:
-                if self.config['is_co_sdf']:
-                    self.slam.save_mesh(idx, voxel_size=self.config['mesh']['voxel_eval'])
-                else:
-                    print('save_eslam_mesh!')
-                    mesh_save_path = os.path.join(self.config['data']['output'], self.config['data']['exp_name'])
-                    mesh_directory = os.path.join(mesh_save_path, 'mesh')
+                keyframe_dict_on_cpu = self.keyframe_dict
 
-                    # Create the directory if it doesn't exist
-                    if not os.path.exists(mesh_directory):
-                        os.makedirs(mesh_directory)
+                keyframe_dict_on_gpu = []
+                for keyframe in keyframe_dict_on_cpu:
+                    keyframe_dict_on_gpu.append({
+                        'color': keyframe['color'].to(self.device),
+                        'depth': keyframe['depth'].to(self.device),
+                        'est_c2w': keyframe['est_c2w'].to(self.device)
+                    })
 
-                    mesh_out_file = os.path.join(mesh_directory, f'{idx:05d}_mesh.ply')
-
-                    keyframe_dict_on_cpu = self.keyframe_dict
-
-                    keyframe_dict_on_gpu = []
-                    for keyframe in keyframe_dict_on_cpu:
-                        keyframe_dict_on_gpu.append({
-                            'color': keyframe['color'].to(self.device),
-                            'depth': keyframe['depth'].to(self.device),
-                            'est_c2w': keyframe['est_c2w'].to(self.device)
-                        })
-
-                    self.mesher.get_mesh(mesh_out_file, keyframe_dict_on_gpu, self.device)
-
-    def final_run(self):
-
-            with self.video.get_lock():
-                self.video.map_counter.value += 1
-                self.N = self.video.map_counter.value
-                keyframe_ids = self.video.timestamp[:self.N]
-                current_map_id = int(keyframe_ids[-1])
-                batch = self.dataset[current_map_id]
-                poses = self.video.get_pose(self.N, self.device)
-                cur_c2w = poses[-1]
-
-            for k, v in batch.items():
-                if isinstance(v, torch.Tensor):
-                    batch[k] = v[None, ...]
-                else:
-                    batch[k] = torch.tensor([v])
-            self.global_BA(batch, poses)
-            self.mapping_idx[0] = current_map_id
-
-            self.video.keyframe.add_keyframe(batch, self.video.map_counter.value)
-
-            idx = int(self.mapping_idx[0].item())
-
-            self.slam.save_imgs(idx, batch['depth'][0], batch['rgb'][0], cur_c2w)
-
-            self.keyframe_dict.append(
-                {'color': batch['rgb'][0].cpu(), 'depth': batch['depth'][0].cpu(),
-                 'est_c2w': cur_c2w.clone().cpu()})
-
-            pose_save_path = os.path.join(self.config['data']['output'], self.config['data']['exp_name'])
-            np.save(
-                f'{pose_save_path}/key_est_poses.npy',
-                poses.cpu().numpy(),  # c2ws
-            )
-
+                self.mesher.get_mesh(mesh_out_file, keyframe_dict_on_gpu, self.device)
 
 
 
