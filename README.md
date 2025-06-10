@@ -170,7 +170,7 @@ This is the unofficial implementation of [CP-SLAM](https://github.com/dtc111111/
 ## Run
 
 You can run MNESLAM using the code below:
-
+Ideally, our system needs n GPUs where n is the nubmer of agents. If you want to run the system for debugging purposes, set multi_gpu: False and set the agent number 1.  This configuration runs a single agent and uses the same GPU for both the server and the agent. You can start the system by running:
 ```
 python mneslam.py --config './configs/{Dataset}/{scene}.yaml 
 ```
