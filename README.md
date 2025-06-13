@@ -190,14 +190,15 @@ python mneslam_mp.py --config './configs/{Dataset}/{scene}.yaml
 We employ a slightly different evaluation strategy to measure the quality of the reconstruction, you can find out the code [here](https://github.com/JingwenWang95/neural_slam_eval).
 
 ## Reference
- ```
-bibtex @inproceedings{deng2025mne,
-                      title={MNE-SLAM: Multi-Agent Neural SLAM for Mobile Robots},
-                      author={Deng, Tianchen and Shen, Guole and Xun, Chen and Yuan, Shenghai and Jin, Tongxin and Shen, Hongming and Wang, Yanbo and Wang, Jingchuan and Wang, Hesheng and Wang, Danwei and others},
-                      booktitle={Proceedings of the Computer Vision and Pattern Recognition Conference},
-                      pages={1485--1494},
-                      venue={Nashville, USA},
-                      year={2025}
+Bibtex
+```
+@inproceedings{deng2025mne,
+title={MNE-SLAM: Multi-Agent Neural SLAM for Mobile Robots},
+author={Deng, Tianchen and Shen, Guole and Xun, Chen and Yuan, Shenghai and Jin, Tongxin and Shen, Hongming and Wang, Yanbo and Wang, Jingchuan and Wang, Hesheng and Wang, Danwei and others},
+booktitle={Proceedings of the Computer Vision and Pattern Recognition Conference},
+pages={1485--1494},
+address={Nashville, USA},
+year={2025}
 }
 ```
 
