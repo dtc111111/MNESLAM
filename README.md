@@ -73,9 +73,10 @@ cd MNE-SLAM
 You can create an anaconda environment called `mneslam`. For linux, you need to install **libopenexr-dev** before creating the environment.
 Install all the dependencies via pip (Note here pytorch3d and tinycudann requires ~10min to build)
 ```bash
+sudo apt-get install libopenexr-dev
 conda env create -f environment.yaml
 conda activate mneslam
-sudo apt-get install libopenexr-dev
+
 ```
 ### Build extension (Lietorch)
 ```bash
