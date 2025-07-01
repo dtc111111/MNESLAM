@@ -72,7 +72,6 @@ cd MNE-SLAM
 ## Install the environment
 You can create an anaconda environment called `mneslam`. For linux, you need to install **libopenexr-dev** before creating the environment.
 Install all the dependencies via pip (Note here pytorch3d and tinycudann requires ~10min to build)
-### Install the pytorch first (Please check the cuda version)
 ```bash
 conda env create -f environment.yaml
 conda activate mneslam
@@ -82,11 +81,7 @@ sudo apt-get install libopenexr-dev
 ```bash
 python setup.py install
 ```
-
-
 ### Build extension (marching cubes from neuralRGBD)
-
-
 ```bash
 cd external/NumpyMarchingCubes
 python setup.py install
@@ -102,7 +97,6 @@ git clone --recursive https://github.com/nvlabs/tiny-cuda-nn
 cd tiny-cuda-nn/bindings/torch
 python setup.py install
 ```
-
 
 If desired, the Open3D package can be installed in the [headless rendering](http://www.open3d.org/docs/latest/tutorial/Advanced/headless_rendering.html) mode. This is useful for running MNESLAM on a server without a display. We recommend to install from [this commit](https://github.com/isl-org/Open3D/tree/v0.15.1) as we observed bugs in other releases of Open3D.
 
