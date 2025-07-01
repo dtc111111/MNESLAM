@@ -238,4 +238,3 @@ dependencies:
     - wheel==0.38.4
     - widgetsnbextension==3.6.0
     - zipp==3.7.0
-prefix: /home/xxx/anaconda3/envs/mneslam
