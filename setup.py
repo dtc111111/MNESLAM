@@ -75,6 +75,7 @@ lietorch_ext = CUDAExtension(
         ]
     }
 )
+
 setup(
     name='mneslam_extensions',
     version='1.0',
