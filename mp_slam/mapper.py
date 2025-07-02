@@ -1,4 +1,3 @@
-# Use dataset object
 import numpy as np
 import torch
 import time

@@ -71,29 +71,18 @@ cd MNE-SLAM
 ```
 ## Install the environment
 You can create an anaconda environment called `mneslam`. For linux, you need to install **libopenexr-dev** before creating the environment.
-Install all the dependencies via pip (Note here pytorch3d and tinycudann requires ~10min to build)
-### Install the pytorch first (Please check the cuda version)
-```bash
-pip install torch==1.10.1+cu113 torchvision==0.11.2+cu113 torchaudio==0.10.1 -f https://download.pytorch.org/whl/cu113/torch_stable.html
-```
+Install all the dependencies via conda (Note here pytorch3d and tinycudann requires ~10min to build)
 ```bash
 sudo apt-get install libopenexr-dev
 conda env create -f environment.yaml
 conda activate mneslam
+
 ```
-### Build extension (DROID-SLAM)
+### Build extension (Lietorch/marching cubes from neuralRGBD/driod)
 ```bash
 python setup.py install
 ```
 
-
-### Build extension (marching cubes from neuralRGBD)
-
-
-```bash
-cd external/NumpyMarchingCubes
-python setup.py install
-```
 For tinycudann, if you cannot access network when you use GPUs, you can also try build from source as below:
 
 ```bash
@@ -105,7 +94,6 @@ git clone --recursive https://github.com/nvlabs/tiny-cuda-nn
 cd tiny-cuda-nn/bindings/torch
 python setup.py install
 ```
-
 
 If desired, the Open3D package can be installed in the [headless rendering](http://www.open3d.org/docs/latest/tutorial/Advanced/headless_rendering.html) mode. This is useful for running MNESLAM on a server without a display. We recommend to install from [this commit](https://github.com/isl-org/Open3D/tree/v0.15.1) as we observed bugs in other releases of Open3D.
 
@@ -170,7 +158,7 @@ This is the unofficial implementation of [CP-SLAM](https://github.com/dtc111111/
 ## Run
 
 You can run MNESLAM using the code below:
-
+Ideally, our system needs n GPUs where n is the nubmer of agents. If you want to run the system for debugging purposes, set multi_gpu: False and set the agent number 1.  This configuration runs a single agent and uses the same GPU for both the server and the agent. You can start the system by running:
 ```
 python mneslam.py --config './configs/{Dataset}/{scene}.yaml 
 ```
@@ -189,7 +177,18 @@ python mneslam_mp.py --config './configs/{Dataset}/{scene}.yaml
 
 We employ a slightly different evaluation strategy to measure the quality of the reconstruction, you can find out the code [here](https://github.com/JingwenWang95/neural_slam_eval).
 
-
+## Reference
+Bibtex
+```
+@inproceedings{deng2025mne,
+title={MNE-SLAM: Multi-Agent Neural SLAM for Mobile Robots},
+author={Deng, Tianchen and Shen, Guole and Xun, Chen and Yuan, Shenghai and Jin, Tongxin and Shen, Hongming and Wang, Yanbo and Wang, Jingchuan and Wang, Hesheng and Wang, Danwei and others},
+booktitle={Proceedings of the Computer Vision and Pattern Recognition Conference (CVPR)},
+pages={1485--1494},
+address={Nashville, USA},
+year={2025}
+}
+```
 
 ## Acknowledgement
 
