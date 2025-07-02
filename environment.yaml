@@ -120,7 +120,6 @@ dependencies:
     - decorator==5.1.1
     - defusedxml==0.7.1
     - deprecation==2.1.0
-    - droid-backends==0.0.0
     - entrypoints==0.4
     - evo==1.16.0
     - ffmpeg==1.4
@@ -153,7 +152,6 @@ dependencies:
     - jupyterlab-server==2.12.0
     - jupyterlab-widgets==1.1.0
     - kiwisolver==1.4.4
-    - lietorch==0.2
     - locket==0.2.1
     - lpips==0.1.4
     - markupsafe==2.1.1
@@ -219,7 +217,6 @@ dependencies:
     - testpath==0.6.0
     - threadpoolctl==3.1.0
     - tifffile==2021.11.2
-    - tinycudann==1.7
     - tomlkit==0.10.1
     - toolz==0.11.2
     - torch==1.10.1+cu113
