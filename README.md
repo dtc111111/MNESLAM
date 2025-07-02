@@ -71,22 +71,18 @@ cd MNE-SLAM
 ```
 ## Install the environment
 You can create an anaconda environment called `mneslam`. For linux, you need to install **libopenexr-dev** before creating the environment.
-Install all the dependencies via pip (Note here pytorch3d and tinycudann requires ~10min to build)
+Install all the dependencies via conda (Note here pytorch3d and tinycudann requires ~10min to build)
 ```bash
 sudo apt-get install libopenexr-dev
 conda env create -f environment.yaml
 conda activate mneslam
 
 ```
-### Build extension (Lietorch)
+### Build extension (Lietorch/marching cubes from neuralRGBD/driod)
 ```bash
 python setup.py install
 ```
-### Build extension (marching cubes from neuralRGBD)
-```bash
-cd external/NumpyMarchingCubes
-python setup.py install
-```
+
 For tinycudann, if you cannot access network when you use GPUs, you can also try build from source as below:
 
 ```bash
