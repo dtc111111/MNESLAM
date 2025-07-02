@@ -24,7 +24,7 @@ dependencies:
   - charset-normalizer=2.0.12=pyhd8ed1ab_0
   - cryptography=36.0.0=py37h9ce1e76_0
   - cudatoolkit=11.3.1=h2bc3f7f_2
-  - cudatoolkit-dev=11.3.1=py37h5e8e339_0
+
   - cycler=0.11.0=pyhd3eb1b0_0
   - dataclasses=0.8=pyhc8e2a94_3
   - dbus=1.13.18=hb2f20db_0
@@ -169,7 +169,6 @@ dependencies:
     - notebook==6.4.10
     - notebook-shim==0.1.0
     - numpy==1.21.6
-    - numpymarchingcubes==0.0.1
     - nvidia-cublas-cu11==11.10.3.66
     - nvidia-cuda-nvrtc-cu11==11.7.99
     - nvidia-cuda-runtime-cu11==11.7.99
