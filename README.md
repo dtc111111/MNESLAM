@@ -78,11 +78,16 @@ conda env create -f environment.yaml
 conda activate mneslam
 
 ```
-### Build extension (Lietorch/marching cubes from neuralRGBD/driod)
+### Build extension (Lietorch/droid)
 ```bash
 python setup.py install
 ```
-
+### Build extension (marching cubes from neuralRGBD)
+```bash
+cd NumpyMarchingCubes
+python setup.py install
+cd ..
+```
 For tinycudann, if you cannot access network when you use GPUs, you can also try build from source as below:
 
 ```bash
