@@ -56,7 +56,7 @@ MNE-SLAM: Multi-Agent Neural SLAM for Mobile Robots
 - [x] We have updated the `README.md` and are preparing to open-source our code！  
 - [x] Code for main parts, including `optimizer`, `renderer`, `mapping modules`, `Joint Scene Representation`
 - [x] Installation setup
-- [ ] Multi-agent Communication
+- [x] Multi-agent Communication
 
 # Installation
 
