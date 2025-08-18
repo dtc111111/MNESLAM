@@ -1,0 +1,28 @@
+inherit_from: configs/ScanNet/scannet.yaml
+mapping:
+  bound: [[-0.1,5.2],[-0.1,5.1],[-0.1,2.7]]
+  marching_cubes_bound: [[-0.1,5.2],[-0.1,5.1],[-0.1,2.7]]
+
+grid:
+  hash_size: 14 # 0.48
+start_index: 3000
+#end_index: 7643
+end_index: 6000
+enable_loop_detect: False
+data:
+  datadir: /data0/dataset/scannet/scene0233_00
+  trainskip: 1
+  output: output/scannet/scene0233_00
+  exp_name: div4_part2_0911
+
+cam:
+  H: 480
+  W: 640
+  fx: 577.870605
+  fy: 577.870605
+  cx: 319.5
+  cy: 239.5
+  png_depth_scale: 1000.
+  crop_edge: 10
+  near: 0
+  far: 5.0

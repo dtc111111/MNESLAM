@@ -1,9 +1,18 @@
 import os
+os.environ["OMP_NUM_THREADS"] = '3'
+
+# Package imports
 import torch
 import torch.optim as optim
 import random
+import argparse
+import shutil
+import json
+
 from matplotlib import pyplot as plt
 from tqdm import tqdm
+
+# Local imports
 import config
 from model.scene_rep import JointEncoding
 from model.keyframe import KeyFrameDatabase
@@ -12,14 +21,19 @@ from datasets.dataset_track import get_dataset_track
 from utils import coordinates, extract_mesh
 from tools.eval_ate import pose_evaluation
 from optimization.utils import at_to_transform_matrix, qt_to_transform_matrix, matrix_to_axis_angle, matrix_to_quaternion, cam_pose_to_matrix
+
+# Multiprocessing imports
 import torch.multiprocessing as mp
 mp.set_sharing_strategy('file_system')
 from mp_slam.tracker import Tracker
 from mp_slam.mapper import Mapper
+
 import torch.nn as nn
+
 from tracker.droid_net import DroidNet
 from collections import OrderedDict
 from tracker.depth_video import DepthVideo
+
 from tracker.trajectory_filler import PoseTrajectoryFiller
 from lietorch import SE3
 import numpy as np
@@ -31,12 +45,13 @@ from model.Mesher import Mesher
 import multiprocessing
 
 from PIL import Image
+from threading import Thread
 
 
 class BundleAdjustment(nn.Module):
     def __init__(self, config, SLAM):
         super(BundleAdjustment, self).__init__()
-        self.args = args
+        # self.args = args
         self.config = config
         self.device = SLAM.device
         self.net = SLAM.net
@@ -46,8 +61,11 @@ class BundleAdjustment(nn.Module):
         self.last_t = -1
         self.ba_counter = -1
 
+
         # backend process
         self.backend = Backend(self.net, self.video, self.config, self.device)
+
+        self.rank = SLAM.rank
 
     def info(self, msg):
         print(Fore.GREEN)
@@ -62,7 +80,7 @@ class BundleAdjustment(nn.Module):
 
             t_start = 0
             now = f'{strftime("%Y-%m-%d %H:%M:%S", gmtime())} - Full BA'
-            msg = f'\n\n {now} : [{t_start}, {t}]; Current Keyframe is {cur_t}, last is {self.last_t}.'
+            msg = f'\n\n {now} : [{t_start}, {t}]; Current Keyframe is {cur_t}, last is {self.last_t}, agent{self.rank}.'
 
             self.backend.dense_ba(t_start=t_start, t_end=t, steps=6, motion_only=False)
             self.info(msg+'\n')
@@ -71,18 +89,24 @@ class BundleAdjustment(nn.Module):
 
 
 class MNESLAM():
-    def __init__(self, config):
+    def __init__(self, config, rank=0, world_size=1, shared_components=None):
         try:
             mp.set_start_method('spawn', force=True)
         except RuntimeError:
             pass
         self.config = config
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.rank = rank
+        self.world_size = world_size
+        self.device = torch.device(f"cuda:0" if torch.cuda.is_available() else "cpu")
+
         self.dataset = get_dataset(config)
         self.create_bounds()
+        self.all_agent_bounds = self.load_all_agent_bounds(config, rank, world_size)
+        # self.create_pose_data()
         self.get_pose_representation()
 
-        self.create_share_data()
+        # Use shared components if provided, otherwise create them
+        self.create_share_data(shared_components)
 
         self.dataset_track = get_dataset_track(config, device=self.device)
 
@@ -113,6 +137,8 @@ class MNESLAM():
         self.traj_filler = PoseTrajectoryFiller(net=self.net, video=self.video, device=self.device)
 
         self.ba = BundleAdjustment(config,  self)
+        
+        print(f"Agent {self.rank} initialized on device {self.device}.")
 
     def load_pretrained(self, pretrained):
         print(f'INFO: load pretrained checkpiont from {pretrained}!')
@@ -131,24 +157,34 @@ class MNESLAM():
     def pose_eval_func(self):
         return pose_evaluation
     
-    def create_share_data(self):
-        # self.create_pose_data()
-        self.mapping_first_frame = torch.zeros((1)).int().share_memory_()
-        self.mapping_idx = torch.zeros((1)).share_memory_()
-        self.tracking_idx = torch.zeros((1)).share_memory_()
-        self.vis_timestamp = torch.zeros((1)).share_memory_()
+    def create_share_data(self, shared_components=None):
+        if shared_components:
+            # For multi-agent, only the descriptor DB is shared
+            self.descriptor_db_lock = shared_components['descriptor_db_lock']
+            self.descriptor_db = shared_components['descriptor_db']
+        else:
+            # For single agent, create its own descriptor DB for consistency
+            self.descriptor_db_lock = multiprocessing.Lock()
+            manager = multiprocessing.Manager()
+            self.descriptor_db = manager.list()
 
-        ###########################
-        self.all_triggered = torch.zeros((1)).int().share_memory_()
-        self.hang_on = torch.zeros((1)).int().share_memory_()
-        self.hang_on_mesh = torch.zeros((1)).int().share_memory_()
-        self.tracking_finished = torch.zeros((1)).int().share_memory_()
-        self.mapping_finished = torch.zeros((1)).int().share_memory_()
-        self.num_running_thread = torch.zeros((1)).int().share_memory_()
-        self.optimizing_finished = torch.zeros((1)).int().share_memory_()
-
+        # Keyframe dictionary is now ALWAYS local to the agent
+        self.keyframe_dict_lock = multiprocessing.Lock()
         manager = multiprocessing.Manager()
         self.keyframe_dict = manager.list()
+
+        # These should be local states for each agent, not shared across processes.
+        self.mapping_first_frame = torch.zeros((1), dtype=torch.int)
+        self.mapping_idx = torch.zeros((1))
+        self.tracking_idx = torch.zeros((1))
+        self.vis_timestamp = torch.zeros((1))
+
+        # Control flags should be local to each SLAM instance (process)
+        self.all_triggered = torch.zeros((1), dtype=torch.int)
+        self.tracking_finished = torch.zeros((1), dtype=torch.int)
+        self.mapping_finished = torch.zeros((1), dtype=torch.int)
+        self.num_running_thread = torch.zeros((1), dtype=torch.int)
+        self.optimizing_finished = torch.zeros((1), dtype=torch.int)
     
     def seed_everything(self, seed):
         random.seed(seed)
@@ -192,8 +228,9 @@ class MNESLAM():
         '''
         Create the keyframe database
         '''
-
-        num_kf = int(self.dataset.num_frames // self.config['mapping']['keyframe_every'] + 1)
+        #######change
+        num_kf = int(self.dataset.num_frames // self.config['mapping']['keyframe_every'] + 1)  
+        # print('#kf:', num_kf)
         print('#Pixels to save:', self.dataset.num_rays_to_save)
         return KeyFrameDatabase(config, 
                                 self.dataset.H, 
@@ -210,22 +247,109 @@ class MNESLAM():
         for i, pose in enumerate(self.dataset.poses):
             self.pose_gt[i] = pose
  
+    def load_all_agent_bounds(self, main_config, current_rank, world_size):
+        """
+        Loads bounding boxes for all agents from the main config's 'loop_bound' section.
+        Args:
+            main_config (dict): The main configuration dictionary.
+            current_rank (int): The rank of the current agent (0-indexed).
+            world_size (int): The total number of agents.
+        Returns:
+            dict: A dictionary where keys are agent ranks (0-indexed) and values are their
+                  bounding box tensors.
+        """
+        if world_size == 1:
+            # Single agent, use its own standard bound.
+            # The key is the agent's rank.
+            return {current_rank: torch.from_numpy(np.array(main_config['mapping']['bound']))}
+
+        all_bounds = {}
+        loop_bounds_config = main_config.get('loop_bound')
+        default_bound_np = np.array(main_config['mapping']['bound'])
+
+        if loop_bounds_config is None:
+            print(f"[WARN] Agent {current_rank}: 'loop_bound' section not found in the main config. "
+                  f"Using default bound for all {world_size} agents.")
+            for rank in range(world_size):
+                all_bounds[rank] = torch.from_numpy(default_bound_np)
+            return all_bounds
+
+        for rank in range(world_size):
+            bound_key = f'bound_{rank}'
+            if bound_key in loop_bounds_config:
+                bound_data = loop_bounds_config[bound_key]
+                all_bounds[rank] = torch.from_numpy(np.array(bound_data))
+            else:
+                print(f"[WARN] Agent {current_rank}: Bound for agent {rank} ('{bound_key}') not found in 'loop_bound'. "
+                      f"Using default bound.")
+                all_bounds[rank] = torch.from_numpy(default_bound_np)
+
+        return all_bounds
+
     def save_state_dict(self, save_path):
         torch.save(self.model.state_dict(), save_path)
     
     def load(self, load_path):
         self.model.load_state_dict(torch.load(load_path))
 
+    def save_latest_checkpoint(self):
+        """
+        Saves the current model state to a 'latest_checkpoint.pt' for other agents to use.
+        This enables online map fusion.
+        """
+        agent_output_dir = os.path.join(self.config['data']['output'], self.config['data']['exp_name'], f'agent_{self.rank}')
+        os.makedirs(agent_output_dir, exist_ok=True)
+        save_path = os.path.join(agent_output_dir, 'latest_checkpoint.pt')
+
+        # For distillation, we primarily need the model's parameters.
+        save_dict = {
+            'model': self.model.state_dict(),
+            'all_planes': self.model.all_planes,
+            'bound': self.model.bound.cpu(),
+            'bounding_box': self.model.bounding_box.cpu(),
+        }
+
+        # Atomic save: write to a temporary file then rename. This prevents another
+        # process from reading a partially written checkpoint.
+        temp_save_path = save_path + ".tmp"
+        torch.save(save_dict, temp_save_path)
+        os.replace(temp_save_path, save_path)
+
+    def save_checkpoint_before_fusion(self):
+        """
+        Saves the current model state to a 'latest_checkpoint.pt' for other agents to use.
+        This enables online map fusion.
+        """
+        agent_output_dir = os.path.join(self.config['data']['output'], self.config['data']['exp_name'], f'agent_{self.rank}')
+        os.makedirs(agent_output_dir, exist_ok=True)
+        save_path = os.path.join(agent_output_dir, 'checkpoint_before_fusion.pt')
+
+        # For distillation, we primarily need the model's parameters.
+        save_dict = {
+            'model': self.model.state_dict(),
+            'all_planes': self.model.all_planes,
+            'bound': self.model.bound.cpu(),
+            'bounding_box': self.model.bounding_box.cpu(),
+        }
+
+        # Atomic save: write to a temporary file then rename. This prevents another
+        # process from reading a partially written checkpoint.
+        temp_save_path = save_path + ".tmp"
+        torch.save(save_dict, temp_save_path)
+        os.replace(temp_save_path, save_path)
+
     def save_ckpt(self, save_path):
         '''
         Save the model parameters and the estimated pose
         '''
-        keyframe_list = list(self.keyframe_dict)
+        with self.keyframe_dict_lock:
+            # 将 keyframe_dict 转换为普通的 Python 列表
+            keyframe_list = list(self.keyframe_dict)
 
         save_dict = {
             'all_planes': self.model.all_planes,
             'model': self.model.state_dict(),
-            'keyframes': keyframe_list,
+            # 'keyframes': keyframe_list, # This is now a safe copy
             'bound': self.bounding_box
         }
 
@@ -264,9 +388,38 @@ class MNESLAM():
                 e_loss = self.config["mapping"]["w_sdf_fs"] * ret["e_fs_loss"] + self.config["mapping"]["w_sdf_center"] * \
                         ret["e_center_loss"]+ self.config["mapping"]["w_sdf_tail"] * ret["e_tail_loss"]
                 loss += e_loss
-
+        if smooth:
+            loss += self.config['training']['smooth_weight'] * self.smoothness(self.config['training']['smooth_pts'], 
+            self.config['training']['smooth_vox'],
+            margin=self.config['training']['smooth_margin'])
+        
         return loss             
 
+
+    def smoothness(self, sample_points=256, voxel_size=0.1, margin=0.05, color=False):
+        '''
+        Smoothness loss of feature grid
+        '''
+        volume = self.bounding_box[:, 1] - self.bounding_box[:, 0]
+
+        grid_size = (sample_points-1) * voxel_size
+        offset_max = self.bounding_box[:, 1]-self.bounding_box[:, 0] - grid_size - 2 * margin
+
+        offset = torch.rand(3).to(offset_max) * offset_max + margin
+        coords = coordinates(sample_points - 1, 'cpu', flatten=False).float().to(volume)
+        pts = (coords + torch.rand((1,1,1,3)).to(volume)) * voxel_size + self.bounding_box[:, 0] + offset
+
+
+        pts_tcnn = (pts - self.bounding_box[:, 0]) / (self.bounding_box[:, 1] - self.bounding_box[:, 0])
+        sdf = self.model.query_sdf(pts_tcnn, embed=True)
+        tv_x = torch.pow(sdf[1:,...]-sdf[:-1,...], 2).sum()
+        tv_y = torch.pow(sdf[:,1:,...]-sdf[:,:-1,...], 2).sum()
+        tv_z = torch.pow(sdf[:,:,1:,...]-sdf[:,:,:-1,...], 2).sum()
+
+        loss = (tv_x + tv_y + tv_z)/ (sample_points**3)
+
+        return loss
+    
     def get_rays_from_batch(self, batch, c2w_est, indices):
         '''
         Get the rays from the batch
@@ -354,7 +507,7 @@ class MNESLAM():
             all_planes_global (Tuple): global feature planes.
             decoders (torch.nn.Module): decoders for TSDF and color.
         """
-        img_savepath = os.path.join(self.config['data']['output'], self.config['data']['exp_name'],
+        img_savepath = os.path.join(self.config['data']['output'], self.config['data']['exp_name'],  f'agent_{self.rank}',
                                      'eval_vis')
         os.makedirs(f'{img_savepath}', exist_ok=True)
 
@@ -373,6 +526,8 @@ class MNESLAM():
             image = Image.fromarray(color_np_uint8)
             image.save(f'{img_savepath}/{idx:05d}.jpg')
 
+        # with torch.no_grad():
+
             gt_depth_np = gt_depth.squeeze(0).cpu().numpy()
             gt_color_np = gt_color.squeeze(0).cpu().numpy()
 
@@ -381,6 +536,7 @@ class MNESLAM():
             else:
                 c2w = c2w_or_camera_tensor.squeeze().detach()
 
+            # self, c2w, device, gt_depth=None
             depth, color = self.model.render_img(c2w, self.device, gt_depth=gt_depth)
             depth_np = depth.detach().cpu().numpy()
             color_np = color.detach().cpu().numpy()
@@ -425,9 +581,11 @@ class MNESLAM():
             plt.savefig(f'{img_savepath}/{idx:05d}.jpg', bbox_inches='tight', pad_inches=0.2, dpi=300)
             plt.cla()
             plt.clf()
+            plt.close()
 
-    def save_mesh(self, i, voxel_size=0.05):
-        mesh_savepath = os.path.join(self.config['data']['output'], self.config['data']['exp_name'], 'mesh_track{}.ply'.format(i))
+    def save_mesh(self, agent_dir, i, voxel_size=0.05):
+        mesh_savepath = os.path.join(self.config['data']['output'], self.config['data']['exp_name'], agent_dir, 'mesh', 'mesh_track_{}.ply'.format(i))
+        # mesh_savepath = os.path.join(agent_output_dir, 'mesh_track{}.ply'.format(i))
         if self.config['mesh']['render_color']:
             color_func = self.model.render_surface_color
         else:
@@ -449,21 +607,216 @@ class MNESLAM():
         
         return cur_rot, cur_trans, pose_optimizer
 
+
+
+    def mapping(self, rank):
+        print('Mapping Triggered!')
+        self.all_triggered += 1
+
+        while (self.all_triggered < self.num_running_thread):
+            pass
+
+        while self.tracking_finished < 1 or self.video.map_counter.value < self.video.counter.value-1:
+            self.mapper.run()
+
+        while self.video.map_counter.value < self.video.counter.value:
+            self.mapper.final_run()
+        ###########################最后map?
+        self.mapping_finished += 1
+        print('Mapping Done!')
+
+    def tracking(self, rank):
+        self.all_triggered += 1  # Confirm the initiation of all threads
+        while (self.all_triggered < self.num_running_thread):
+            pass
+
+        while True:
+            ########finishmapfirst
+            if self.mapping_first_frame[0] == 1:
+                break
+        print('Start tracking')
+
+        for (timestamp, image, depth, intrinsic, gt_pose) in tqdm(self.dataset_track):
+            ############## wait or not
+            # while self.video.map_counter.value < self.video.counter.value:
+            #     time.sleep(0.1)
+            self.tracking_idx[0] = timestamp
+            self.tracker.run(timestamp, image, depth, intrinsic, gt_pose)
+
+            torch.cuda.empty_cache()
+        print('final', self.video.timestamp)
+        self.tracking_finished += 1
+
+        print('Tracking Done!')
+
+    def optimizing(self, rank):
+        print('Full Bundle Adjustment Triggered!')
+        self.all_triggered += 1
+        # while(self.tracking_finished < 1)or(self.mapping_finished<1):
+        while self.tracking_finished < 1:
+            self.ba()
+
+        self.ba()
+        self.optimizing_finished += 1
+
+        print('Full Bundle Adjustment  Done!')
+
+
+    def terminate(self, rank):
+        """ fill poses for non-keyframe images and evaluate """
+
+        # Add agent rank to output files to avoid conflicts
+        output_dir = os.path.join(self.config['data']['output'], self.config['data']['exp_name'])
+        agent_output_dir = os.path.join(output_dir, f'agent_{self.rank}')
+        os.makedirs(agent_output_dir, exist_ok=True)
+
+        model_savepath = os.path.join(agent_output_dir, 'final_checkpoint.pt')
+
+        mesh_save_path = os.path.join(self.config['data']['output'], self.config['data']['exp_name'], f'agent_{self.rank}')
+        # mesh_directory = os.path.join(mesh_save_path, 'mesh')
+
+        # # Create the directory if it doesn't exist
+        # if not os.path.exists(mesh_directory):
+        #     os.makedirs(mesh_directory)
+
+        self.save_ckpt(model_savepath)
+        self.save_mesh(f'agent_{self.rank}', 'final', voxel_size=self.config['mesh']['voxel_final'])
+
+        mesh_out_file = os.path.join(agent_output_dir, 'final_mesh.ply')
+        print('Saving final mesh!')
+        with self.keyframe_dict_lock:
+            keyframe_dict_on_cpu = list(self.keyframe_dict)
+            keyframe_dict_on_gpu = []
+            for keyframe in keyframe_dict_on_cpu:
+                keyframe_dict_on_gpu.append({
+                    'color': keyframe['color'].to(self.device),
+                    'depth': keyframe['depth'].to(self.device),
+                    'est_c2w': keyframe['est_c2w'].to(self.device)
+                })
+        self.mesher.get_mesh(mesh_out_file, keyframe_dict_on_gpu, self.device)
+
+        timestamps = [i for i in range(len(self.dataset_track))]
+        camera_trajectory = self.traj_filler(self.dataset_track)  # w2cs
+
+        # pose_save_path = os.path.join(self.config['data']['output'], self.config['data']['exp_name'])
+        # np.save(
+        #     f'{pose_save_path}/w2cs_est_poses.npy',
+        #     camera_trajectory.matrix().data.cpu().numpy(),  # c2ws
+        # )
+
+        w2w = SE3(self.video.pose_compensate[0].clone().unsqueeze(dim=0)).to(camera_trajectory.device)
+        camera_trajectory = w2w * camera_trajectory.inv()
+        traj_est = camera_trajectory.data.cpu().numpy()
+        estimate_c2w_list = camera_trajectory.matrix().data.cpu().numpy()
+        
+        # pose_save_path = os.path.join(self.config['data']['output'], self.config['data']['exp_name'])
+        np.save(
+            f'{agent_output_dir}/est_poses.npy',
+            estimate_c2w_list,  # c2ws
+        )
+        
+        num_keyframes = self.video.counter.value
+        keyframe_poses = self.video.get_all_pose(self.device)[:num_keyframes].cpu().numpy()
+        np.save(
+            f'{agent_output_dir}/key_est_poses.npy',
+            keyframe_poses,  # c2ws
+        )
+
+        # Also save the corresponding timestamps, which are crucial for alignment
+        keyframe_timestamps = self.video.timestamp[:num_keyframes].cpu().numpy()
+        np.save(
+            f'{agent_output_dir}/key_timestamps.npy',
+            keyframe_timestamps
+        )
+
+        do_evaluation = True
+        if do_evaluation:
+            from evo.core.trajectory import PoseTrajectory3D
+            import evo.main_ape as main_ape
+            from evo.core.metrics import PoseRelation
+            from evo.core.trajectory import PosePath3D
+
+            traj_ref = []
+            traj_est_select = []
+            if self.dataset_track.poses is None:  # for eth3d submission
+                if self.dataset_track.image_timestamps is not None: # This part might need adjustment for multi-agent
+                    submission_txt = f'{agent_output_dir}/submission.txt'
+                    with open(submission_txt, 'w') as fp:
+                        for tm, pos in zip(self.dataset_track.image_timestamps, traj_est.tolist()):
+                            str = f'{tm:.9f}'
+                            for ps in pos:  # timestamp tx ty tz qx qy qz qw
+                                str += f' {ps:.14f}'
+                            fp.write(str+'\n')
+                    print('Poses are save to {}!'.format(submission_txt))
+
+                print("Terminate: no GT poses found!")
+                trans_init = None
+                gt_c2w_list = None
+            else:
+                for i in range(len(self.dataset_track.poses)):
+                    val = self.dataset_track.poses[i].sum()
+                    if np.isnan(val) or np.isinf(val):
+                        print(f'Nan or Inf found in gt poses, skipping {i}th pose!')
+                        continue
+                    traj_est_select.append(traj_est[i])
+                    traj_ref.append(self.dataset_track.poses[i])
+
+                traj_est = np.stack(traj_est_select, axis=0)
+                gt_c2w_list = torch.from_numpy(np.stack(traj_ref, axis=0))
+
+                traj_est = PoseTrajectory3D(
+                    positions_xyz=traj_est[:,:3],
+                    orientations_quat_wxyz=traj_est[:,3:],
+                    timestamps=np.array(timestamps))
+
+                traj_ref =PosePath3D(poses_se3=traj_ref)
+
+                result = main_ape.ape(traj_ref, traj_est, est_name='traj',
+                                      pose_relation=PoseRelation.translation_part, align=True, correct_scale=True)
+                print(f"Agent {self.rank} Evaluation Results:\n" + result.pretty_str())
+                out_path=f'{agent_output_dir}/metrics_traj.txt'
+                with open(out_path, 'a') as fp:
+                    fp.write(result.pretty_str())
+                trans_init = result.np_arrays['alignment_transformation_sim3']
+
+                print('trans_init', trans_init)
+
+            # if self.meshing_finished > 0 and (not self.only_tracking):
+            #     self.mesher(the_end=True, estimate_c2w_list=estimate_c2w_list, gt_c2w_list=gt_c2w_list, trans_init=trans_init)
+
+        print("Terminate: Done!")
+
+
     def run(self):
-        processes = [
-            mp.Process(target=self.mapping, args=(0,)),
-            mp.Process(target=self.tracking, args=(1,)),
-            mp.Process(target=self.optimizing, args=(2,)),
-        ]
+        t1 = Thread(target=self.mapping, args=(0,))
+        t2 = Thread(target=self.tracking, args=(1,))
+        t3 = Thread(target=self.optimizing, args=(2,))
 
-        self.num_running_thread[0] += len(processes)
+        self.num_running_thread[0] += 3
 
-        for p in processes:
-            p.start()
+        t1.start()
+        t2.start()
+        t3.start()
 
-        for p in processes:
-            p.join()
+        t1.join()
+        t2.join()
+        t3.join()
 
+def run_agent(rank, world_size, config, shared_components):
+    from multiprocessing.resource_tracker import unregister
+    """
+    The main function for each agent process.
+    """
+    # Bind process to a specific GPU
+    # os.environ["CUDA_VISIBLE_DEVICES"] = str(rank)
+    
+    # Each agent has its own SLAM instance
+    slam = MNESLAM(config, rank, world_size, shared_components)
+    
+    # Start the internal threads for tracking, mapping, optimizing
+    slam.run()
+    
+    # Wait for SLAM to finish and then terminate
+    slam.terminate(rank=rank)
 
-
-
+    print(f"Agent {rank} has terminated.")

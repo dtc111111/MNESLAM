@@ -1,0 +1,15 @@
+inherit_from: configs/Replica/replica.yaml
+mapping:
+  bound: [[-3,3],[-4,2.5],[-2,2.5]]
+  marching_cubes_bound: [[-2.2,2.6],[-3.4,2.1],[-1.4,2.0]]
+
+data:
+  datadir:  /data0/dataset/Replica/office0
+  trainskip: 1
+  output: output/Replica/office0
+  exp_name: all
+
+enable_loop_detect: False
+start_index: 0
+end_index: 2000
+is_co_sdf: False

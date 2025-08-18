@@ -1,0 +1,24 @@
+inherit_from: configs/ScanNet/scannet.yaml
+mapping:
+  bound: [[-0.1,8.6],[-0.1,8.9],[-0.3,3.3]]
+  marching_cubes_bound: [[-0.1,8.6],[-0.1,8.9],[-0.3,3.3]]
+  keyframe_every: 5
+start_index: 0
+#end_index: 5578
+end_index: 5578
+enable_loop_detect: False
+grid:
+  oneGrid: False
+
+data:
+  datadir: /data0/dataset/scannet/scene0000_00
+  trainskip: 1
+  output: output/scannet/scene0000_00
+  exp_name: demo0910
+
+
+meshing:
+  level_set: 0
+  resolution: 0.03 #cm # Increase this number to speed up meshing algorithm
+  eval_rec: False
+  mesh_bound_scale: 1.02

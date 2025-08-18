@@ -1,0 +1,16 @@
+inherit_from: configs/ScanNet/scannet.yaml
+mapping:
+  bound: [[-0.5,10.5],[-0.5,10.],[-0.5,4.]]
+  marching_cubes_bound: [[-0.5,10.5],[-0.5,10.],[-0.5,4.]]
+data:
+  datadir: /data0/dataset/scannet/scene0054_00
+  output: output/scannet/scene0054_00
+  trainskip: 1
+  exp_name: all_1127
+
+start_index: 0
+is_co_sdf: True
+end_index: 6629
+enable_loop_detect: False
+grid:
+  oneGrid: False

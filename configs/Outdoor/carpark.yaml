@@ -1,0 +1,60 @@
+inherit_from: configs/Outdoor/outdoor.yaml
+mapping:
+# bound: [[41,250],[37,143],[-1,31]]
+# marching_cubes_bound:  [[41,250],[37,143],[-1,31]] ######################################
+  bound: [[41,120],[37,143],[-1,31]]
+  marching_cubes_bound:  [[41,120],[37,143],[-1,31]]
+  first_mesh: True
+
+is_co_sdf: False
+enable_loop_detect: False
+
+data: #/data0/wjy/sgl/DATASET/Indoor/indoor_sq1   data0/wjy/sgl/DATASET/ntu_indoor
+  datadir: /data0/wjy/sgl/DATASET/outdoor
+  trainskip: 1
+  output: output/Outdoor/carpark
+  exp_name: 0526_ours
+planes_res:
+  coarse: 0.24
+  fine: 0.06
+  bound_dividable: 0.06
+c_planes_res:
+  coarse: 0.24
+  fine: 0.06
+
+model:
+  c_dim: 32
+  truncation: 0.1
+  #input_ch: 128 #64
+  input_ch: 64
+  input_ch_pos: 48
+
+scale: 1
+
+# grid:
+#   oneGrid: False
+
+cam:
+  ### original camera parameters
+  H: 480
+  W: 640
+#  H: 480
+#  W: 848
+  fx: 607.226
+  fy: 315.675
+  cx: 607.511
+  cy: 233.739
+  png_depth_scale: 1000.0 #for depth image in png format
+mesh:
+  resolution: 512
+  render_color: False
+  vis: 100
+  voxel_eval: 0.3
+  voxel_final: 0.1
+  visualisation: False
+ #eslam
+meshing:
+  level_set: 0
+  resolution: 0.1 #cm # Increase this number to speed up meshing algorithm
+  eval_rec: False
+  mesh_bound_scale: 1.02
