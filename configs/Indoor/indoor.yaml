@@ -16,7 +16,7 @@ mapping:
   first_mesh: False
   iters: 100 #10
   loop_iters: 100
-  distill_iters: 50
+  distill_iters: 100
   cur_frame_iters: 0
   lr_embed: 0.01
   lr_embed_color: 0.01
@@ -33,17 +33,14 @@ mapping:
   pose_accum_step: 2
   map_wait_step: 0
   filter_depth: False
-#  w_sdf_fs: 20  #10
-#  w_sdf_center: 1200
-#  w_sdf_tail: 120
-
+  mapping_save_stride: 100
   w_sdf_fs: 10
   w_sdf_center: 200
   w_sdf_tail: 50
   vis: 10
 
 tracking:
-  pretrained: output/pretrained/droid.pth
+  pretrained: DROID_MODEL_PATH/droid.pth
   device: "cuda:0"
   buffer: 512
   beta: 0.75
@@ -120,14 +117,6 @@ cam:
   W_edge: 8
   H_out: 360
   W_out: 640
-#  H: 720
-#  W: 1280
-#  fx: 637.146728515625
-#  fy: 636.6676025390625
-#  cx: 637.002685546875
-#  cy: 363.0322265625
-
-#  png_depth_scale: 1000. #for depth image in png format
   crop_edge: 0
   near: 0
   far: 60.0
@@ -156,22 +145,11 @@ training:
   rgb_missing: 0.0
 
 distillation:
-  use_bound_overlap: True # 是否启用基于边界的重叠区域蒸馏
-
+  use_bound_overlap: True
 
 loop_closure:
-  # 在图优化中，为位姿调整引入基于空间距离的权重衰减
-  pose_decay_sigma: 5.0 # 权重衰减的高斯核标准差（米）。值越大，影响范围越广。
-  pose_decay_min_weight: 0.1 # 即使是距离最远的帧，也施加的最小调整权重，以保证图的连通性。
-
-  # Weights for near vs far points, based on user's idea
-  far_plane_threshold: 10.0 # meters, points beyond this are "far"
-  near_rgb_weight: 1.0      # Emphasize near points for color detail
-  far_rgb_weight: 0.5
-  near_depth_weight: 1.0    # Emphasize near points for depth detail
-  far_depth_weight: 0.5
-  near_sdf_weight: 0.5
-  far_sdf_weight: 1.0       # Emphasize far points for geometric structure
+  pose_decay_sigma: 10.0
+  pose_decay_min_weight: 0.1 
 
 #coslam
 mesh:
@@ -200,5 +178,5 @@ distillation:
 model_name: 'VGG16-NetVLAD-Pitts30K'
 
 checkpoints:
-  VGG16-NetVLAD-Pitts30K: 'output/VGG16-NetVLAD-Pitts30K.mat'
-  VGG16-NetVLAD-TokyoTM: 'output/VGG16-NetVLAD-TokyoTM.mat'
+  VGG16-NetVLAD-Pitts30K: 'MODEL_PATH/VGG16-NetVLAD-Pitts30K.mat'
+  VGG16-NetVLAD-TokyoTM: 'MODEL_PATH/VGG16-NetVLAD-TokyoTM.mat'

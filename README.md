@@ -6,9 +6,9 @@
 
 <h1 align="center">
 MNE-SLAM: Multi-Agent Neural SLAM for Mobile Robots
-  
+
 [CVPR 2025]
-  
+
 [INS Dataset Page](https://ins-dataset.github.io/ins/) | [Paper](https://openaccess.thecvf.com//content/CVPR2025/papers/Deng_MNE-SLAM_Multi-Agent_Neural_SLAM_for_Mobile_Robots_CVPR_2025_paper.pdf)
 
 </h1>
@@ -102,6 +102,35 @@ python setup.py install
 
 If desired, the Open3D package can be installed in the [headless rendering](http://www.open3d.org/docs/latest/tutorial/Advanced/headless_rendering.html) mode. This is useful for running MNESLAM on a server without a display. We recommend to install from [this commit](https://github.com/isl-org/Open3D/tree/v0.15.1) as we observed bugs in other releases of Open3D.
 
+## Install the Environment (via Docker)
+
+We now recommend using Docker to set up the `mneslam` environment for consistency and ease of installation.
+
+### Install Docker (if not already installed)
+
+Follow the official instructions: [https://docs.docker.com/get-docker/](https://docs.docker.com/get-docker/)
+
+Make sure you can run containers with GPU support. If you're using NVIDIA GPUs, install the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html).
+
+### Build the Docker Image
+
+```bash
+# Build the image
+docker build -t mneslam:latest .
+```
+
+### Run the Docker Container
+
+```bash
+docker run --gpus all -it --rm \
+  --name mneslam_container \
+  -v $(pwd):/workspace \
+  mneslam:latest
+```
+
+This will mount the current repository inside the container and open an interactive shell.
+
+
 ## Run
 
 ### Replica
@@ -115,7 +144,7 @@ Please follow the data downloading procedure on [ScanNet](http://www.scan-net.or
 
 <details>
   <summary>[Directory structure of ScanNet (click to expand)]</summary>
-  
+
   DATAROOT is `./Datasets` by default. If a sequence (`sceneXXXX_XX`) is stored in other places, please change the `input_folder` path in the config file or in the command line.
 
 ```
@@ -165,10 +194,8 @@ This is the unofficial implementation of [CP-SLAM](https://github.com/dtc111111/
 You can run MNESLAM using the code below:
 Ideally, our system needs n GPUs where n is the nubmer of agents. If you want to run the system for debugging purposes, set multi_gpu: False and set the agent number 1.  This configuration runs a single agent and uses the same GPU for both the server and the agent. You can start the system by running:
 ```
-python multi_agents.py --config configs/Replica_multi_agents/room0.yaml --num_gpus 2
+python multi_agents.py --config configs/Replica/room0.yaml --num_gpus 2
 ```
-
-
 
 ## Evaluation
 

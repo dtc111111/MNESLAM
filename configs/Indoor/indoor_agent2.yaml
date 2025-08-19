@@ -1,11 +1,12 @@
-inherit_from: configs/Indoor_multi_agents/indoor.yaml
+inherit_from: configs/Indoor/indoor.yaml
 mapping:
-  bound: [[-6.2,20],[-15.8,0],[-1.0, 4.5]]
-  marching_cubes_bound:  [[-6.2,20],[-15.8,0],[-1.0, 4.5]]
+  bound: [[25., 56.4 ],[-13.5,-2.],[-2.0, 4.5]]
+  marching_cubes_bound:  [[25., 56.4 ],[-13.5,-2.],[-2.0, 4.5]]
   first_mesh: True
   first_iters: 500
-start_index: 3300
-end_index: 4605
+start_index: 1300
+end_index: 3000
+
 #cam:
 #  H: 720
 #  W: 1280
@@ -14,13 +15,13 @@ end_index: 4605
 #  cx: 637.003
 #  cy: 363.032
 
-data: #/data0/wjy/sgl/DATASET/Indoor/indoor_sq1 /data0/wjy/sgl/DATASET/ntu_indoor
+data:
   datadir: /data0/dataset/indoor
   trainskip: 1
-  output: output/Indoor_multi_agents/Indoor
+  output: output/Indoor/Indoor
   exp_name: 1129_rs
 is_co_sdf: False
-enable_loop_detect: False
+enable_loop_detect: True
 model:
   c_dim: 32
   truncation: 0.1
@@ -31,7 +32,7 @@ model:
 scale: 1
 
 grid:
-  oneGrid: False
+  oneGrid: True
 mesh:
   voxel_final: 0.03
 
@@ -43,4 +44,4 @@ c_planes_res:
   coarse: 0.24
   fine: 0.06
 
-rank: 0
+rank: 2

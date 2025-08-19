@@ -8,6 +8,6 @@ data:
   datadir: /data0/dataset/Replica/room0
   trainskip: 1
   output: output/Replica/room0
-  exp_name: part2
+  exp_name: 1129_rs
 is_co_sdf: False
-enable_loop_detect: False
+enable_loop_detect: True

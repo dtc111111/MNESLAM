@@ -6,10 +6,10 @@ data:
   datadir: /data0/dataset/Replica/office1
   output: output/Replica/office1
   trainskip: 1
-  exp_name: part1
+  exp_name: 1129_rs
 
 start_index: 0
 end_index: 1100
 
-enable_loop_detect: False
+enable_loop_detect: True
 is_co_sdf: False

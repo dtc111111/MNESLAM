@@ -61,7 +61,6 @@ class BundleAdjustment(nn.Module):
         self.last_t = -1
         self.ba_counter = -1
 
-
         # backend process
         self.backend = Backend(self.net, self.video, self.config, self.device)
 
@@ -300,29 +299,6 @@ class MNESLAM():
         agent_output_dir = os.path.join(self.config['data']['output'], self.config['data']['exp_name'], f'agent_{self.rank}')
         os.makedirs(agent_output_dir, exist_ok=True)
         save_path = os.path.join(agent_output_dir, 'latest_checkpoint.pt')
-
-        # For distillation, we primarily need the model's parameters.
-        save_dict = {
-            'model': self.model.state_dict(),
-            'all_planes': self.model.all_planes,
-            'bound': self.model.bound.cpu(),
-            'bounding_box': self.model.bounding_box.cpu(),
-        }
-
-        # Atomic save: write to a temporary file then rename. This prevents another
-        # process from reading a partially written checkpoint.
-        temp_save_path = save_path + ".tmp"
-        torch.save(save_dict, temp_save_path)
-        os.replace(temp_save_path, save_path)
-
-    def save_checkpoint_before_fusion(self):
-        """
-        Saves the current model state to a 'latest_checkpoint.pt' for other agents to use.
-        This enables online map fusion.
-        """
-        agent_output_dir = os.path.join(self.config['data']['output'], self.config['data']['exp_name'], f'agent_{self.rank}')
-        os.makedirs(agent_output_dir, exist_ok=True)
-        save_path = os.path.join(agent_output_dir, 'checkpoint_before_fusion.pt')
 
         # For distillation, we primarily need the model's parameters.
         save_dict = {
@@ -607,12 +583,9 @@ class MNESLAM():
         
         return cur_rot, cur_trans, pose_optimizer
 
-
-
     def mapping(self, rank):
         print('Mapping Triggered!')
         self.all_triggered += 1
-
         while (self.all_triggered < self.num_running_thread):
             pass
 
@@ -621,7 +594,6 @@ class MNESLAM():
 
         while self.video.map_counter.value < self.video.counter.value:
             self.mapper.final_run()
-        ###########################最后map?
         self.mapping_finished += 1
         print('Mapping Done!')
 
@@ -631,20 +603,16 @@ class MNESLAM():
             pass
 
         while True:
-            ########finishmapfirst
             if self.mapping_first_frame[0] == 1:
                 break
         print('Start tracking')
 
         for (timestamp, image, depth, intrinsic, gt_pose) in tqdm(self.dataset_track):
-            ############## wait or not
-            # while self.video.map_counter.value < self.video.counter.value:
-            #     time.sleep(0.1)
             self.tracking_idx[0] = timestamp
             self.tracker.run(timestamp, image, depth, intrinsic, gt_pose)
 
             torch.cuda.empty_cache()
-        print('final', self.video.timestamp)
+
         self.tracking_finished += 1
 
         print('Tracking Done!')
@@ -661,7 +629,6 @@ class MNESLAM():
 
         print('Full Bundle Adjustment  Done!')
 
-
     def terminate(self, rank):
         """ fill poses for non-keyframe images and evaluate """
 
@@ -671,13 +638,6 @@ class MNESLAM():
         os.makedirs(agent_output_dir, exist_ok=True)
 
         model_savepath = os.path.join(agent_output_dir, 'final_checkpoint.pt')
-
-        mesh_save_path = os.path.join(self.config['data']['output'], self.config['data']['exp_name'], f'agent_{self.rank}')
-        # mesh_directory = os.path.join(mesh_save_path, 'mesh')
-
-        # # Create the directory if it doesn't exist
-        # if not os.path.exists(mesh_directory):
-        #     os.makedirs(mesh_directory)
 
         self.save_ckpt(model_savepath)
         self.save_mesh(f'agent_{self.rank}', 'final', voxel_size=self.config['mesh']['voxel_final'])
@@ -698,18 +658,11 @@ class MNESLAM():
         timestamps = [i for i in range(len(self.dataset_track))]
         camera_trajectory = self.traj_filler(self.dataset_track)  # w2cs
 
-        # pose_save_path = os.path.join(self.config['data']['output'], self.config['data']['exp_name'])
-        # np.save(
-        #     f'{pose_save_path}/w2cs_est_poses.npy',
-        #     camera_trajectory.matrix().data.cpu().numpy(),  # c2ws
-        # )
-
         w2w = SE3(self.video.pose_compensate[0].clone().unsqueeze(dim=0)).to(camera_trajectory.device)
         camera_trajectory = w2w * camera_trajectory.inv()
         traj_est = camera_trajectory.data.cpu().numpy()
         estimate_c2w_list = camera_trajectory.matrix().data.cpu().numpy()
-        
-        # pose_save_path = os.path.join(self.config['data']['output'], self.config['data']['exp_name'])
+
         np.save(
             f'{agent_output_dir}/est_poses.npy',
             estimate_c2w_list,  # c2ws
@@ -781,11 +734,7 @@ class MNESLAM():
 
                 print('trans_init', trans_init)
 
-            # if self.meshing_finished > 0 and (not self.only_tracking):
-            #     self.mesher(the_end=True, estimate_c2w_list=estimate_c2w_list, gt_c2w_list=gt_c2w_list, trans_init=trans_init)
-
         print("Terminate: Done!")
-
 
     def run(self):
         t1 = Thread(target=self.mapping, args=(0,))
@@ -807,8 +756,6 @@ def run_agent(rank, world_size, config, shared_components):
     """
     The main function for each agent process.
     """
-    # Bind process to a specific GPU
-    # os.environ["CUDA_VISIBLE_DEVICES"] = str(rank)
     
     # Each agent has its own SLAM instance
     slam = MNESLAM(config, rank, world_size, shared_components)

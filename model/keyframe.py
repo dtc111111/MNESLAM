@@ -11,7 +11,7 @@ class KeyFrameDatabase(object):
         self.rays = torch.zeros((num_kf, num_rays_to_save, 7))
         self.num_rays_to_save = num_rays_to_save
         # manager = Manager()
-        # self.frame_ids = manager.list()  # 共享列表
+        # self.frame_ids = manager.list()
         self.frame_ids = [0]
         self.all_frame_ids = torch.arange(0, num_kf, dtype=torch.int32)
 
@@ -98,7 +98,7 @@ class KeyFrameDatabase(object):
         idxs = torch.tensor(random.sample(range(num_kf * self.num_rays_to_save), bs))
         sample_rays = self.rays[:num_kf].reshape(-1, 7)[idxs]
 
-        frame_ids = self.frame_ids[idxs//self.num_rays_to_save]
+        frame_ids = self.frame_ids[torch.div(idxs, self.num_rays_to_save, rounding_mode='trunc')]
         # print('self.frame_ids', self.frame_ids)
         return sample_rays, frame_ids
 

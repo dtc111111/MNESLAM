@@ -3,56 +3,33 @@ from pytorch3d.transforms import matrix_to_quaternion, quaternion_to_matrix, rot
 import torch.nn.functional as F
 
 def slerp_torch(q0, q1, t, DOT_THRESHOLD=0.9995):
-    """
-    对批量的四元数进行球面线性插值 (SLERP)。
-    Args:
-        q0 (torch.Tensor): 起始四元数 (w, x, y, z)，可以是单个或批量。
-        q1 (torch.Tensor): 结束四元数 (w, x, y, z)，可以是单个或批量。
-        t (torch.Tensor): 插值因子，形状为 [N, 1]。
-        DOT_THRESHOLD (float): 用于判断角度是否过小的阈值。
-    Returns:
-        torch.Tensor: 插值后的四元数，形状为 [N, 4]。
-    """
-    # 确保输入是批量的
     if q0.dim() == 1: q0 = q0.unsqueeze(0)
     if q1.dim() == 1: q1 = q1.unsqueeze(0)
 
-    # 计算点积
     dot = torch.sum(q0 * q1, dim=-1, keepdim=True)
 
-    # 如果点积为负，Slerp 不会走最短路径。通过翻转一个四元数来修正。
     q1_flipped = q1.clone()
     neg_mask = dot < 0
-    # 使用 torch.where 替代 in-place 索引，以正确处理广播。
-    # 当 neg_mask (形状 [N, 1]) 用于索引 q1_flipped (形状 [N, 4]) 时，直接索引会导致维度不匹配错误。
-    # torch.where 会将 neg_mask 正确广播到 q1_flipped 的形状，从而安全地翻转整个四元数。
+
     q1_flipped = torch.where(neg_mask, -q1_flipped, q1_flipped)
     dot[neg_mask] = -dot[neg_mask]
 
-    # 如果角度太小，使用线性插值 (LERP) 并归一化
     omega = torch.acos(torch.clamp(dot, -1.0, 1.0))
     sin_omega = torch.sin(omega)
 
-    # 标准 Slerp 公式
     w0 = torch.sin((1.0 - t) * omega) / sin_omega
     w1 = torch.sin(t * omega) / sin_omega
 
-    # 组合结果
     q_slerp = w0 * q0 + w1 * q1_flipped
 
-    # 对于角度非常小的情况，直接使用 LERP
     q_lerp = (1.0 - t) * q0 + t * q1_flipped
     
-    # 根据点积阈值选择 Slerp 或 LERP
     use_lerp_mask = dot > DOT_THRESHOLD
     q_out = torch.where(use_lerp_mask, q_lerp, q_slerp)
 
     return F.normalize(q_out, p=2, dim=-1)
 
 def matrix_to_quaternion_torch(matrix):
-    """
-    将一个或一批旋转矩阵转换为四元数 (w, x, y, z)。
-    """
     if matrix.dim() == 2:
         matrix = matrix.unsqueeze(0)
     
@@ -64,7 +41,6 @@ def matrix_to_quaternion_torch(matrix):
     
     q = torch.zeros((matrix.size(0), 4), device=matrix.device, dtype=matrix.dtype)
 
-    # 情况 1: trace > 0
     mask_pos_trace = trace > 0
     S = torch.sqrt(trace[mask_pos_trace] + 1.0) * 2
     q[mask_pos_trace, 0] = 0.25 * S
@@ -72,10 +48,8 @@ def matrix_to_quaternion_torch(matrix):
     q[mask_pos_trace, 2] = (m02[mask_pos_trace] - m20[mask_pos_trace]) / S
     q[mask_pos_trace, 3] = (m10[mask_pos_trace] - m01[mask_pos_trace]) / S
 
-    # 情况 2: trace <= 0
     mask_neg_trace = ~mask_pos_trace
     
-    # 子情况 2a: m00 是对角线上的最大值
     mask_m00 = mask_neg_trace & (m00 >= m11) & (m00 >= m22)
     S = torch.sqrt(1.0 + m00[mask_m00] - m11[mask_m00] - m22[mask_m00]) * 2
     q[mask_m00, 0] = (m21[mask_m00] - m12[mask_m00]) / S
@@ -83,7 +57,6 @@ def matrix_to_quaternion_torch(matrix):
     q[mask_m00, 2] = (m01[mask_m00] + m10[mask_m00]) / S
     q[mask_m00, 3] = (m02[mask_m00] + m20[mask_m00]) / S
 
-    # 子情况 2b: m11 是对角线上的最大值
     mask_m11 = mask_neg_trace & (m11 > m00) & (m11 > m22)
     S = torch.sqrt(1.0 + m11[mask_m11] - m00[mask_m11] - m22[mask_m11]) * 2
     q[mask_m11, 0] = (m02[mask_m11] - m20[mask_m11]) / S
@@ -91,7 +64,6 @@ def matrix_to_quaternion_torch(matrix):
     q[mask_m11, 2] = 0.25 * S
     q[mask_m11, 3] = (m12[mask_m11] + m21[mask_m11]) / S
 
-    # 子情况 2c: m22 是对角线上的最大值
     mask_m22 = mask_neg_trace & ~mask_m00 & ~mask_m11
     S = torch.sqrt(1.0 + m22[mask_m22] - m00[mask_m22] - m11[mask_m22]) * 2
     q[mask_m22, 0] = (m10[mask_m22] - m01[mask_m22]) / S
@@ -102,9 +74,6 @@ def matrix_to_quaternion_torch(matrix):
     return q.squeeze()
 
 def quaternion_to_matrix_torch(quaternions):
-    """
-    将一个或一批四元数 (w, x, y, z) 转换为旋转矩阵。
-    """
     if quaternions.dim() == 1:
         quaternions = quaternions.unsqueeze(0)
     
@@ -173,11 +142,6 @@ def homogeneous_matrix_to_pose(H):
 
     # Return the pose as [tx, ty, tz, qx, qy, qz, qw]
     return torch.tensor([tx, ty, tz, qx, qy, qz, qw])
-
-
-
-
-
 
 def cam_pose_to_matrix(batch_poses):
     """

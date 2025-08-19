@@ -13,6 +13,8 @@ mapping:
   sample: 2048
   first_mesh: True
   iters: 50
+  loop_iters: 100
+  distill_iters: 100
   lr_embed: 0.005
   lr_embed_color: 0.005
   lr_decoder: 0.01
@@ -28,11 +30,10 @@ mapping:
   pose_accum_step: 5
   map_wait_step: 0
   filter_depth: False
-
+  mapping_save_stride: 100
   w_sdf_fs: 5
   w_sdf_center: 200
   w_sdf_tail: 30
-#####
   vis: 10
 
 vis:
@@ -51,7 +52,7 @@ tracking:
   wait_iters: 100
 #############goslam
   device: "cuda:0"
-  pretrained: /data0/wjy/sgl/GO-SLAM/pretrained/droid.pth
+  pretrained: DROID_MODEL_PATH/droid.pth
 
   buffer: 250
   beta: 0.75
@@ -129,7 +130,7 @@ training:
   smooth_vox: 0.1
   smooth_margin: 0.05
 
-  #n_samples:256
+  n_samples: 256
   n_samples_d: 32
   range_d: 0.1
   n_range_d: 11
@@ -147,11 +148,6 @@ mesh:
   voxel_eval: 0.05
   voxel_final: 0.02
   visualisation: False
-#meshing:
-#  level_set: 0
-#  resolution: 0.02 #cm # Increase this number to speed up meshing algorithm
-#  eval_rec: False
-#  mesh_bound_scale: 1.02
 
 planes_res:
   coarse: 0.02
@@ -170,12 +166,28 @@ model:
 
 scale: 1
 
-
 meshing:
   level_set: 0
   resolution: 0.02 #cm # Increase this number to speed up meshing algorithm
   eval_rec: False
   mesh_bound_scale: 1.02
 
+distillation:
+  use_bound_overlap: True
 
+loop_closure:
+  pose_decay_sigma: 10.0
+  pose_decay_min_weight: 0.1 
 
+loop_bound: # Remember to set the right boundaries
+  bound_0: [[-1.0,7.0],[-1.3,3.7],[-1.7,1.4]]
+  bound_1: [[-1.0,7.0],[-1.3,3.7],[-1.7,1.4]]
+
+distillation:
+  use_bound_overlap: True
+
+model_name: 'VGG16-NetVLAD-Pitts30K'
+
+checkpoints:
+  VGG16-NetVLAD-Pitts30K: 'MODEL_PATH/VGG16-NetVLAD-Pitts30K.mat'
+  VGG16-NetVLAD-TokyoTM: 'MODEL_PATH/VGG16-NetVLAD-TokyoTM.mat'

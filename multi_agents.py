@@ -1,5 +1,3 @@
-import os
-import sys
 import argparse
 import config
 import multiprocessing as mp
@@ -8,16 +6,10 @@ mp.set_start_method('spawn', force=True)
 def spawn_agent(rank, world_size, config_path, shared_components):
     import os
     os.environ["CUDA_VISIBLE_DEVICES"] = str(rank)
-
-    # 每个智能体加载自己的配置
     agent_cfg = config.load_config(config_path)
-    # 将 agent_id 添加到配置中，用于后续数据加载
     agent_cfg['agent_id'] = rank
-    # if args.output is not None:
-    #     agent_cfg['data']['output'] = args.output
 
     from mneslam_mp import run_agent
-
     run_agent(rank, world_size, agent_cfg, shared_components)
 
 if __name__ == '__main__':
@@ -38,8 +30,8 @@ if __name__ == '__main__':
     # Create shared data structures for all agents
     manager = mp.Manager()
     shared_components = {
-        'descriptor_db': manager.list(),      # 共享的NetVLAD描述子数据库
-        'descriptor_db_lock': manager.Lock()  # 描述子数据库的锁
+        'descriptor_db': manager.list(),
+        'descriptor_db_lock': manager.Lock()
     }
 
     if world_size > 1:
@@ -50,7 +42,6 @@ if __name__ == '__main__':
 
         processes = []
         for rank in range(world_size):
-            # 为每个智能体构建特定的配置文件路径
             agent_config_path = f"{config_base_name}_agent{rank}.yaml"
             print(f"Launching agent {rank} with config: {agent_config_path}")
             p = mp.Process(target=spawn_agent, args=(rank, world_size, agent_config_path, shared_components))

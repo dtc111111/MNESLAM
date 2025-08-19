@@ -1,4 +1,4 @@
-inherit_from: configs/Indoor_multi_agents/indoor.yaml
+inherit_from: configs/Indoor/indoor.yaml
 mapping:
   bound: [[-6.2,50.],[-6.5,-2.2],[-2.0, 4.5]]
   marching_cubes_bound: [[-6.2,50.],[-6.5,-2.2],[-2.0, 4.5]]
@@ -15,14 +15,12 @@ end_index: 1700
 #  cx: 637.003
 #  cy: 363.032
 
-
-data: #/data0/wjy/sgl/DATASET/Indoor/indoor_sq1 /data0/wjy/sgl/DATASET/ntu_indoor
-  datadir: /data0/dataset/indoor
+data:
   trainskip: 1
-  output: output/Indoor_multi_agents/Indoor
+  output: output/Indoor/Indoor
   exp_name: 1129_rs
 is_co_sdf: False
-enable_loop_detect: False
+enable_loop_detect: True
 model:
   c_dim: 32
   truncation: 0.1

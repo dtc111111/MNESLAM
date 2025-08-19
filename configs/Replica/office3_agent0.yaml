@@ -6,7 +6,7 @@ data:
   datadir: /data0/dataset/Replica/office3
   output: output/Replica/office3
   trainskip: 1
-  exp_name: part1
+  exp_name: 1129_rs
 enable_loop_detect: True
 start_index: 0
 end_index: 1100
