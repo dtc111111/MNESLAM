@@ -38,6 +38,7 @@ class PoseTrajectoryFiller:
 
         ### linear pose interpolation ###
         N = self.video.counter.value #当前关键帧数量
+        print('keyframe',N)
         M = len(timestamps)
 
         ts = self.video.timestamp[:N]
@@ -87,7 +88,7 @@ class PoseTrajectoryFiller:
         images = []
         depths = []
         intrinsics = []
-
+        #16帧一插值
         for (timestamp, image, depth, intrinsic, gt_pose) in image_stream:
             timestamps.append(timestamp)
             images.append(image)

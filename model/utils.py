@@ -1,8 +1,9 @@
+# package imports
 import numpy as np
 import torch
 import torch.nn.functional as F
 from math import exp, log, floor
-
+####eslam#########
 def get_rays(H, W, fx, fy, cx, cy, c2w, device):
     """
     Get rays for a whole image.

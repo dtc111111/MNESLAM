@@ -186,9 +186,44 @@ class DepthVideo:
 
         # 初始化矩阵来存储转换后的位姿
         c2w_matrices = []
-        print(self.poses)
+        # print(self.poses)
         # 遍历所有位姿索引
         for index in range(N):
+            # 从世界坐标到相机坐标的转换
+            w2c = lietorch.SE3(self.poses[index].clone()).to(device)
+            # 从相机坐标到世界坐标的转换，包括补偿位姿
+            c2w = lietorch.SE3(self.pose_compensate[0].clone()).to(w2c.device) * w2c.inv()
+            c2w = c2w.matrix()  # 转换为4x4矩阵
+
+            trans = self.poses_gt[0].clone()
+            trans[:3, 1] *= -1
+            trans[:3, 2] *= -1
+            # print('####################trans', trans)
+
+            # trans = torch.tensor([[-3.2057e-01, 4.4806e-01, -8.3455e-01, 3.4530e+00],
+            #                       [9.4722e-01, 1.5164e-01, -2.8244e-01, 4.5461e-01],
+            #                       [1.0790e-16, -8.8105e-01, -4.7302e-01, 5.9363e-01],
+            #                       [0.0000e+00, 0.0000e+00, 0.0000e+00, 1.0000e+00]], device=device)
+
+            c2w = trans @ c2w
+            c2w[:3, 1] *= -1
+            c2w[:3, 2] *= -1
+
+            # 26 gt -3.856797169672012693e-01 3.021256147992357199e-01 -8.717633100803701129e-01 3.566249804253109446e+00 9.226327307873375405e-01 1.262948058485572900e-01 -3.644152385611442724e-01 6.892607707624622826e-01 1.157125811473194137e-16 -9.448649294464576132e-01 -3.274603259971212710e-01 4.649919160893953851e-01 0.000000000000000000e+00 0.000000000000000000e+00 0.000000000000000000e+00 1.000000000000000000e+00
+            # print('c2w_trans', c2w)
+            c2w_matrices.append(c2w)
+
+        c2w_matrices_tensor = torch.stack(c2w_matrices)
+
+        return c2w_matrices_tensor
+
+    def get_all_pose(self, device='cuda:0'):
+
+        # 初始化矩阵来存储转换后的位姿
+        c2w_matrices = []
+        # print(self.poses)
+        # 遍历所有位姿索引
+        for index in range(self.counter.value):  #is this right?
             # 从世界坐标到相机坐标的转换
             w2c = lietorch.SE3(self.poses[index].clone()).to(device)
             # 从相机坐标到世界坐标的转换，包括补偿位姿

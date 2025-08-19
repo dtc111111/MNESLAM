@@ -1,3 +1,4 @@
+# Package imports
 import torch
 import torch.nn as nn
 import tinycudann as tcnn
@@ -16,6 +17,7 @@ class ColorNet(nn.Module):
         self.model = self.get_model(config['decoder']['tcnn_network'])
     
     def forward(self, input_feat):
+        # h = torch.cat([embedded_dirs, geo_feat], dim=-1)
         return self.model(input_feat)
     
     def get_model(self, tcnn_network=False):

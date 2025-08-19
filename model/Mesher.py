@@ -1,3 +1,44 @@
+# This file is a part of ESLAM.
+#
+# ESLAM is a NeRF-based SLAM system. It utilizes Neural Radiance Fields (NeRF)
+# to perform Simultaneous Localization and Mapping (SLAM) in real-time.
+# This software is the implementation of the paper "ESLAM: Efficient Dense SLAM
+# System Based on Hybrid Representation of Signed Distance Fields" by
+# Mohammad Mahdi Johari, Camilla Carta, and Francois Fleuret.
+#
+# Copyright 2023 ams-OSRAM AG
+#
+# Author: Mohammad Mahdi Johari <mohammad.johari@idiap.ch>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# This file is a modified version of https://github.com/cvg/nice-slam/blob/master/src/utils/Mesher.py
+# which is covered by the following copyright and permission notice:
+    #
+    # Copyright 2022 Zihan Zhu, Songyou Peng, Viktor Larsson, Weiwei Xu, Hujun Bao, Zhaopeng Cui, Martin R. Oswald, Marc Pollefeys
+    #
+    # Licensed under the Apache License, Version 2.0 (the "License");
+    # you may not use this file except in compliance with the License.
+    # You may obtain a copy of the License at
+    #
+    #     http://www.apache.org/licenses/LICENSE-2.0
+    #
+    # Unless required by applicable law or agreed to in writing, software
+    # distributed under the License is distributed on an "AS IS" BASIS,
+    # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    # See the License for the specific language governing permissions and
+    # limitations under the License.
+
 import numpy as np
 import open3d as o3d
 import skimage
@@ -18,6 +59,7 @@ class Mesher(object):
 
     """
     def __init__(self, cfg, SLAM, points_batch_size=500000, ray_batch_size=100000):
+        self.cfg = cfg
         self.points_batch_size = points_batch_size
         self.ray_batch_size = ray_batch_size
         self.scale = cfg['scale']
@@ -34,6 +76,18 @@ class Mesher(object):
 
         self.H, self.W, self.fx, self.fy, self.cx, self.cy = cfg['cam']['H'], cfg['cam']['W'], \
                                             cfg['cam']['fx'], cfg['cam']['fy'], cfg['cam']['cx'], cfg['cam']['cy']
+        self.update_cam()
+    def update_cam(self):
+        """
+        Update the camera intrinsics according to pre-processing config,
+        such as resize or edge crop.
+        """
+        # croping will change H, W, cx, cy, so need to change here
+        if self.cfg['cam']['crop_edge'] > 0:
+            self.H -= self.cfg['cam']['crop_edge'] * 2
+            self.W -= self.cfg['cam']['crop_edge'] * 2
+            self.cx -= self.cfg['cam']['crop_edge']
+            self.cy -= self.cfg['cam']['crop_edge']
 
     def get_bound_from_frames(self, keyframe_dict, scale=1):
         """
@@ -177,7 +231,6 @@ class Mesher(object):
         with torch.no_grad():
             grid = self.get_grid_uniform(self.resolution)
             points = grid['grid_points']
-            # print('points.shape', points.shape)
             mesh_bound = self.get_bound_from_frames(keyframe_dict, self.scale)
 
             z = []

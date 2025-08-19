@@ -103,18 +103,23 @@ class BaseDataset(Dataset):
         color_data = cv2.resize(color_data, (W_out_with_edge, H_out_with_edge))
         color_data = torch.from_numpy(color_data).float().permute(2, 0, 1)[[2, 1, 0], :, :] / 255.0  # bgr -> rgb, [0, 1]
         color_data = color_data.unsqueeze(dim=0)  # [1, 3, h, w]
+
         if self.name == 'indoor':
 
             depth_path = self.depth_paths[index]
-            depth_data = cv2.imread(depth_path, cv2.IMREAD_UNCHANGED).astype(np.int16) / 65535. * 100.
+            depth_data = cv2.imread(depth_path, cv2.IMREAD_UNCHANGED).astype(np.float32) / 65535. * 100.
+
+            # depth_data = cv2.imread(depth_path, cv2.IMREAD_UNCHANGED).astype('int16') / 65535. * 100.
 
         else:
             depth_data = self.depthloader(index)
+            # depth_data[depth_data > 20] = 0
 
         if depth_data is not None:
             depth_data = torch.from_numpy(depth_data).float()
             depth_data = F.interpolate(
                 depth_data[None, None], outsize, mode='nearest')[0, 0]
+
 
         intrinsic = torch.as_tensor([self.fx, self.fy, self.cx, self.cy]).float()
         intrinsic[0] *= W_out_with_edge / self.W
@@ -180,25 +185,14 @@ class Indoor(BaseDataset):
         self.t1 = cfg['end_index']
         self.color_paths = sorted(
             glob.glob(os.path.join(self.input_folder, 'color', '*.jpg')))[self.t0:self.t1]
-        # self.depth_paths = sorted(
-        #     glob.glob(f'{self.input_folder}/results/depth*.png'))
-
+   
         self.depth_paths = sorted(
-            glob.glob(os.path.join(self.input_folder, 'depth_filtered', '*.png')))[self.t0:self.t1]
+                 glob.glob(os.path.join(self.input_folder, 'depth_holefilling', '*.png')))[self.t0:self.t1]
+  
+
         self.n_img = len(self.color_paths)
         self.load_poses(f'{self.input_folder}/traj.txt')
 
-
-    # def load_poses(self, path):
-    #     self.poses = []
-    #     with open(path, "r") as f:
-    #         lines = f.readlines()[self.t0:self.t1]
-    #     for i in range(self.n_img):
-    #         line = lines[i]
-    #         c2w = np.array(list(map(float, line.split()))).reshape(4, 4)
-    #         c2w[:3, 1] *= -1
-    #         c2w[:3, 2] *= -1
-    #         self.poses.append(c2w)
 
     def load_poses(self, path):
         self.poses = []
@@ -217,6 +211,34 @@ class Indoor(BaseDataset):
             c2w_transformed[:3, 1] *= -1
             c2w_transformed[:3, 2] *= -1
             self.poses.append(c2w_transformed)
+
+class Outdoor(BaseDataset):
+    def __init__(self, cfg, device='cuda:0'):
+        super(Outdoor, self).__init__(cfg, device)
+
+        self.color_paths = sorted(
+            glob.glob(f'{self.input_folder}/results/frame*.jpg'))
+        self.depth_paths = sorted(
+            glob.glob(f'{self.input_folder}/results/depth*.png'))
+        self.n_img = len(self.color_paths)
+
+        self.load_poses(f'{self.input_folder}/traj.txt')
+        self.color_paths = self.color_paths
+        self.depth_paths = self.depth_paths
+        self.poses = self.poses
+        self.n_img = len(self.color_paths)
+
+
+    def load_poses(self, path):
+        self.poses = []
+        with open(path, "r") as f:
+            lines = f.readlines()
+        for i in range(self.n_img):
+            line = lines[i]
+            c2w = np.array(list(map(float, line.split()))).reshape(4, 4)
+            c2w[:3, 1] *= -1
+            c2w[:3, 2] *= -1
+            self.poses.append(c2w)
 
 class ScanNet(BaseDataset):
     def __init__(self, cfg, device='cuda:0'):
@@ -254,4 +276,5 @@ dataset_dict = {
     "replica": Replica,
     'scannet': ScanNet,
     'indoor': Indoor,
+    "outdoor": Outdoor,
 }

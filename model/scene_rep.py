@@ -1,25 +1,31 @@
+# package imports
 import os
+
 import numpy as np
 import torch
 import torch.nn as nn
+
+# Local imports
 from .encodings import get_encoder
 from .decoder import ColorSDFNet, ColorSDFNet_v2
 from .utils import sample_pdf, batchify, get_sdf_loss, mse2psnr, compute_loss, normalize_3d_coordinate, get_rays
+
 import torch.nn.functional as F
 
 class JointEncoding(nn.Module):
-    def __init__(self, config, bound_box, ray_batch_size=10000):
+    def __init__(self, config, bound_box, ray_batch_size=4096):
         super(JointEncoding, self).__init__()
         self.config = config
         self.bounding_box = bound_box
+        # self.get_resolution()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.load_bound(config)
-        self.get_encoding(config)
+        self.get_encoding(config)  #plane
         self.get_decoder(config)
 
         self.ray_batch_size = ray_batch_size
 
-    def sample_plane_feature(self, p_nor, planes_xy, planes_xz, planes_yz):
+    def sample_plane_feature(self, p_nor, planes_xy, planes_xz, planes_yz):     #ESLAM
         """
         Sample feature from planes
         Args:
@@ -46,6 +52,22 @@ class JointEncoding(nn.Module):
 
         return feat
 
+    # def get_resolution(self):
+    #     '''
+    #     Get the resolution of the grid
+    #     '''
+    #     dim_max = (self.bounding_box[:,1] - self.bounding_box[:,0]).max()
+    #     if self.config['grid']['voxel_sdf'] > 10:
+    #         self.resolution_sdf = self.config['grid']['voxel_sdf']
+    #     else:
+    #         self.resolution_sdf = int(dim_max / self.config['grid']['voxel_sdf'])
+    #
+    #     if self.config['grid']['voxel_color'] > 10:
+    #         self.resolution_color = self.config['grid']['voxel_color']
+    #     else:
+    #         self.resolution_color = int(dim_max / self.config['grid']['voxel_color'])
+    #
+    #     print('SDF resolution:', self.resolution_sdf)
 
     def load_bound(self, cfg):
         """
@@ -89,6 +111,7 @@ class JointEncoding(nn.Module):
         for planes in [planes_xy, planes_xz, planes_yz]:
             for i, plane in enumerate(planes):
                 plane = plane.to(self.device)
+                plane.share_memory_()
                 planes[i] = plane
 
         return (planes_xy, planes_xz, planes_yz)
@@ -121,6 +144,7 @@ class JointEncoding(nn.Module):
         for c_planes in [c_planes_xy, c_planes_xz, c_planes_yz]:
             for i, plane in enumerate(c_planes):
                 plane = plane.to(self.device)
+                plane.share_memory_()
                 c_planes[i] = plane
 
         return (c_planes_xy, c_planes_xz, c_planes_yz)
@@ -133,13 +157,16 @@ class JointEncoding(nn.Module):
         self.embedpos_fn, self.input_ch_pos = get_encoder(config['pos']['enc'], n_bins=self.config['pos']['n_bins'])
 
         # Sparse parametric encoding (SDF)
+        #self.embed_fn, self.input_ch = get_encoder(config['grid']['enc'], log2_hashmap_size=config['grid']['hash_size'], desired_resolution=self.resolution_sdf)
         self.input_ch = config['model']['input_ch']
         self.input_ch_pos = config['model']['input_ch_pos']
         self.all_planes = self.init_all_planes(self.config)
 
         # Sparse parametric encoding (Color)
         if not self.config['grid']['oneGrid']:
+            #print('Color resolution:', self.resolution_color)
             self.all_planes = self.all_planes + self.init_all_c_planes(self.config)
+            #self.embed_fn_color, self.input_ch_color = get_encoder(config['grid']['enc'], log2_hashmap_size=config['grid']['hash_size'], desired_resolution=self.resolution_color)
 
     def get_decoder(self, config):
         '''
@@ -212,11 +239,15 @@ class JointEncoding(nn.Module):
             geo_feat: [N_rays, N_samples, channel]
         '''
 
+  
+        #embedded = self.embed_fn(inputs_flat)
+
         if not self.config['grid']['oneGrid']:
             planes_xy, planes_xz, planes_yz, c_planes_xy, c_planes_xz, c_planes_yz = self.all_planes
         else:
             planes_xy, planes_xz, planes_yz = self.all_planes
 
+        #embed = self.embed_fn(inputs_flat)
         p_nor = normalize_3d_coordinate(query_points.clone(), self.bound).float()
         inputs_flat = (query_points - self.bounding_box[:, 0]) / (self.bounding_box[:, 1] - self.bounding_box[:, 0])
         inputs_flat = torch.reshape(inputs_flat, [-1, inputs_flat.shape[-1]])
@@ -239,7 +270,7 @@ class JointEncoding(nn.Module):
     def query_color(self, query_points):
         return torch.sigmoid(self.query_color_sdf(query_points)[..., :3])
       
-    def query_color_sdf(self, query_points, loop=False):
+    def query_color_sdf(self, query_points):
         '''
         Query the color and sdf at query_points.
 
@@ -249,18 +280,10 @@ class JointEncoding(nn.Module):
             raw: [N_rays, N_samples, 4]
         '''
 
-        if loop == True:
-            # communication
-            if not self.config['grid']['oneGrid']:
-                planes_xy, planes_xz, planes_yz, c_planes_xy, c_planes_xz, c_planes_yz =  load_planes()
-            else:
-                planes_xy, planes_xz, planes_yz =  load_planes()
+        if not self.config['grid']['oneGrid']:
+            planes_xy, planes_xz, planes_yz, c_planes_xy, c_planes_xz, c_planes_yz = self.all_planes
         else:
-            if not self.config['grid']['oneGrid']:
-                planes_xy, planes_xz, planes_yz, c_planes_xy, c_planes_xz, c_planes_yz = self.all_planes
-            else:
-                planes_xy, planes_xz, planes_yz = self.all_planes
-
+            planes_xy, planes_xz, planes_yz = self.all_planes
 
         p_nor = normalize_3d_coordinate(query_points.clone(), self.bound).float()
 
@@ -272,12 +295,12 @@ class JointEncoding(nn.Module):
 
         if not self.config['grid']['oneGrid']:
             embed_color = self.sample_plane_feature(p_nor, c_planes_xy, c_planes_xz, c_planes_yz)
-
+            #embed_color = self.embed_fn_color(inputs_flat)
             return self.decoder(embed, embe_pos, embed_color)
 
         return self.decoder(embed, embe_pos)
     
-    def run_network(self, inputs, loop=False):
+    def run_network(self, inputs):
         """
         Run the network on a batch of inputs.
 
@@ -288,7 +311,7 @@ class JointEncoding(nn.Module):
         """
         inputs_flat = torch.reshape(inputs, [-1, inputs.shape[-1]])
 
-        outputs_flat = batchify(self.query_color_sdf, None)(inputs_flat, loop)
+        outputs_flat = batchify(self.query_color_sdf, None)(inputs_flat)
         outputs = torch.reshape(outputs_flat, list(inputs.shape[:-1]) + [outputs_flat.shape[-1]])
 
         return outputs
@@ -325,7 +348,7 @@ class JointEncoding(nn.Module):
         rgb, disp_map, acc_map, weights, depth_map, depth_var = self.raw2outputs(raw, z_vals, self.config['training']['white_bkgd'])
         return rgb
     
-    def render_rays(self, rays_o, rays_d, target_d=None, loop=False):
+    def render_rays(self, rays_o, rays_d, target_d=None):
         '''
         Params:
             rays_o: [N_rays, 3]
@@ -359,7 +382,7 @@ class JointEncoding(nn.Module):
 
         # Run rendering pipeline
         pts = rays_o[..., None, :] + rays_d[...,None,:] * z_vals[...,:,None] # [N_rays, N_samples, 3]
-        raw = self.run_network(pts, loop)
+        raw = self.run_network(pts)
         rgb_map, disp_map, acc_map, weights, depth_map, depth_var = self.raw2outputs(raw, z_vals, self.config['training']['white_bkgd'])
 
         # Importance sampling
@@ -374,7 +397,7 @@ class JointEncoding(nn.Module):
             z_vals, _ = torch.sort(torch.cat([z_vals, z_samples], -1), -1)
             pts = rays_o[...,None,:] + rays_d[...,None,:] * z_vals[...,:,None] # [N_rays, N_samples + N_importance, 3]
 
-            raw = self.run_network(pts, loop)
+            raw = self.run_network(pts)
             rgb_map, disp_map, acc_map, weights, depth_map, depth_var = self.raw2outputs(raw, z_vals, self.config['training']['white_bkgd'])
 
         # Return rendering outputs
@@ -423,13 +446,17 @@ class JointEncoding(nn.Module):
             color_list = []
 
             ray_batch_size = self.ray_batch_size
-            gt_depth = gt_depth.reshape(-1).unsqueeze(1).to(device)
+
+            # print(gt_depth.shape)
+
             for i in range(0, rays_d.shape[0], ray_batch_size):
+                # print(i)
                 rays_d_batch = rays_d[i:i+ray_batch_size]
                 rays_o_batch = rays_o[i:i+ray_batch_size]
                 if gt_depth is None:
                     ret = self.render_rays(rays_o_batch, rays_d_batch, target_d=None)
                 else:
+                    gt_depth = gt_depth.reshape(-1).unsqueeze(1).to(device)
                     gt_depth_batch = gt_depth[i:i + ray_batch_size]
                     ret = self.render_rays(rays_o_batch, rays_d_batch, target_d=gt_depth_batch)
 
@@ -472,10 +499,14 @@ class JointEncoding(nn.Module):
         tail_mask = (~front_mask) * (~back_mask) * (~center_mask)
 
         fs_loss = torch.mean(torch.square(sdf[front_mask] - torch.ones_like(sdf[front_mask])))
+
         center_loss = torch.mean(torch.square(
             (z_vals + sdf * self.config["model"]["truncation"])[center_mask] - gt_depth[:, None].expand(z_vals.shape)[center_mask]))
+
         tail_loss = torch.mean(torch.square(
             (z_vals + sdf * self.config["model"]["truncation"])[tail_mask] - gt_depth[:, None].expand(z_vals.shape)[tail_mask]))
+
+        # sdf_losses = self.config["mapping"]["w_sdf_fs"] * fs_loss + self.config["mapping"]["w_sdf_center"] * center_loss + self.config["mapping"]["w_sdf_tail"] * tail_loss
 
         return fs_loss, center_loss, tail_loss
 
@@ -514,8 +545,8 @@ class JointEncoding(nn.Module):
         sdf_weight = 1.0 - num_sdf_samples / num_samples
 
         return front_mask, sdf_mask, fs_weight, sdf_weight
-    
-    def forward(self, rays_o, rays_d, target_rgb, target_d, loop=False, global_step=0):
+
+    def forward(self, rays_o, rays_d, target_rgb, target_d, global_step=0):
         '''
         Params:
             rays_o: ray origins (Bs, 3)
@@ -530,12 +561,17 @@ class JointEncoding(nn.Module):
         '''
 
         # Get render results
-        rend_dict = self.render_rays(rays_o, rays_d, target_d=target_d, loop = loop)
+        rend_dict = self.render_rays(rays_o, rays_d, target_d=target_d)
 
         if not self.training:
             return rend_dict
-
+        
+        # Get depth and rgb weights for loss
         valid_depth_mask = (target_d.squeeze() > 0.) * (target_d.squeeze() < self.config['cam']['depth_trunc'])
+        # rgb_weight = valid_depth_mask.clone().unsqueeze(-1)
+        # rgb_weight[rgb_weight==0] = self.config['training']['rgb_missing']
+
+        # Get render loss
         rgb_loss = compute_loss(rend_dict["rgb"], target_rgb)
         psnr = mse2psnr(rgb_loss)
         depth_loss = compute_loss(rend_dict["depth"].squeeze()[valid_depth_mask], target_d.squeeze()[valid_depth_mask])
@@ -552,6 +588,11 @@ class JointEncoding(nn.Module):
 
         depth_mask = (target_d.squeeze()>0)
         e_fs_loss, e_center_loss, e_tail_loss = self.sdf_losses(sdf[depth_mask], z_vals[depth_mask], target_d.squeeze()[depth_mask])
+        # valid_depth_count = valid_depth_mask.sum()
+        #
+        #
+        # depth_var_loss = (torch.abs(rend_dict["depth"].squeeze()-target_d.squeeze()) /
+        #         torch.sqrt(rend_dict["depth_var"].detach() + 1e-10))[valid_depth_mask].sum() /valid_depth_count
 
         ret = {
             "rgb": rend_dict["rgb"],
@@ -563,10 +604,9 @@ class JointEncoding(nn.Module):
             "e_fs_loss":e_fs_loss,
             "e_center_loss": e_center_loss,
             "e_tail_loss" : e_tail_loss,
-
+            # "depth_var_loss": depth_var_loss,
             "psnr": psnr,
         }
 
         return ret
-
 
