@@ -80,8 +80,8 @@ def extract_mesh(query_fn, config, bounding_box, marching_cube_bound=None, color
     flat = query_pts.reshape([-1, 3])
     bounding_box_cpu = bounding_box.cpu()
 
-    if config['grid']['tcnn_encoding']:
-        flat = (flat - bounding_box_cpu[:, 0]) / (bounding_box_cpu[:, 1] - bounding_box_cpu[:, 0])
+    # if config['grid']['tcnn_encoding']:
+    #     flat = (flat - bounding_box_cpu[:, 0]) / (bounding_box_cpu[:, 1] - bounding_box_cpu[:, 0])
 
     fn = get_batch_query_fn(query_fn, device=bounding_box.device)
 
@@ -113,10 +113,10 @@ def extract_mesh(query_fn, config, bounding_box, marching_cube_bound=None, color
 
 
     if color_func is not None and not config['mesh']['render_color']:
-        if config['grid']['tcnn_encoding']:
-            vert_flat = (torch.from_numpy(vertices).to(bounding_box) - bounding_box[:, 0]) / (bounding_box[:, 1] - bounding_box[:, 0])
+        # if config['grid']['tcnn_encoding']:
+        #     vert_flat = (torch.from_numpy(vertices).to(bounding_box) - bounding_box[:, 0]) / (bounding_box[:, 1] - bounding_box[:, 0])
 
-
+        vert_flat = torch.from_numpy(vertices).to(bounding_box)
         fn_color = get_batch_query_fn(color_func, 1)
 
         chunk = 1024 * 64
