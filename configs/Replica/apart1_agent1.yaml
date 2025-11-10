@@ -1,0 +1,14 @@
+inherit_from: configs/Replica/replica.yaml
+mapping:
+  bound: [[-2.8,8.2],[-1.1,7.2],[-2,1.3]]
+  marching_cubes_bound: [[-2.8,8.2],[-1.1,7.2],[-2,1.3]]
+data: 
+  datadir: DATASET/Apart-1/apart_1_part2
+  trainskip: 1
+  output: output/Apart-1/apart_1
+  exp_name: part2
+enable_loop_detect: True
+start_index: 0
+end_index: 2500
+is_co_sdf: False
+
