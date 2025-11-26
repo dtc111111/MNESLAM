@@ -130,16 +130,30 @@ docker run --gpus all -it --rm \
 
 This will mount the current repository inside the container and open an interactive shell.
 
+# Pretrained Model
 
-## Run
+This project requires several pretrained models for visual feature extraction, retrieval, and SLAM initialization. 
+Please download the following checkpoints before running any demo:
 
-### Replica
+- **DROID-SLAM pretrained model:** 
+
+  [Download `droid.pth`](https://github.com/youmi-zym/GO-SLAM/blob/main/pretrained/droid.pth)
+
+- **NetVLAD Models**: 
+
+  [Download `VGG16-NetVLAD-Pitts30K`](https://cvg-data.inf.ethz.ch/hloc/netvlad/Pitts30K_struct.mat)
+
+  [Download `VGG16-NetVLAD-TokyoTM`](https://cvg-data.inf.ethz.ch/hloc/netvlad/TokyoTM_struct.mat)
+
+# Run
+
+## Replica
 Download the data as below and the data is saved into the `./Datasets/Replica` folder.
 ```bash
 bash scripts/download_replica.sh
 ```
 
-### ScanNet
+## ScanNet
 Please follow the data downloading procedure on [ScanNet](http://www.scan-net.org/) website, and extract color/depth frames from the `.sens` file using this [code](https://github.com/ScanNet/ScanNet/blob/master/SensReader/python/reader.py).
 
 <details>
@@ -174,15 +188,15 @@ Please follow the data downloading procedure on [ScanNet](http://www.scan-net.or
 </details>
 
 
-### TUM RGB-D
+## TUM RGB-D
 Download the data as below and the data is saved into the `./Datasets/TUM` folder.
 ```bash
 bash scripts/download_tum.sh
 ```
-### INS Dataset
+## INS Dataset
 Download the data as below and the data is saved into the `./Datasets/INS` folder. You can download the dataset in [INS Dataset Page](https://ins-dataset.github.io/ins/).
 
-### Reproduction of CP-SLAM
+## Reproduction of CP-SLAM
 This is the unofficial implementation of [CP-SLAM](https://github.com/dtc111111/cp-slam-modified): Collaborative Neural Point-based SLAM System. The original CP-SLAM code contained certain issues that hindered its proper functionality. We have addressed and resolved these issues to ensure correct operation. Additionally, we provided further details on the execution steps and added code for the evaluation section.
 ## Run
 
@@ -192,11 +206,11 @@ Ideally, our system needs n GPUs where n is the nubmer of agents. If you want to
 python multi_agents.py --config configs/Replica/room0.yaml --num_gpus 2
 ```
 
-## Evaluation
+# Evaluation
 
 We employ a slightly different evaluation strategy to measure the quality of the reconstruction, you can find out the code [here](https://github.com/JingwenWang95/neural_slam_eval).
 
-## Reference
+# Reference
 Bibtex
 ```
 @inproceedings{deng2025mne,
@@ -209,7 +223,7 @@ year={2025}
 }
 ```
 
-## Acknowledgement
+# Acknowledgement
 
 We adapt codes from some awesome repositories, including [NICE-SLAM](https://github.com/cvg/nice-slam), [NeuralRGBD](https://github.com/dazinovic/neural-rgbd-surface-reconstruction), [tiny-cuda-nn](https://github.com/NVlabs/tiny-cuda-nn), [NICE-SLAM](https://github.com/cvg/nice-slam), [iMAP](https://edgarsucar.github.io/iMAP/), [ESLAM](https://github.com/idiap/ESLAM) ,[CoSLAM](https://github.com/HengyiWang/Co-SLAM) Thanks for making the code available.
 
