@@ -81,6 +81,7 @@ conda activate mneslam
 ### Build extension (Lietorch/droid)
 ```bash
 python setup.py install
+pip install thirdparty/lietorch
 ```
 ### Build extension (marching cubes from neuralRGBD)
 ```bash
